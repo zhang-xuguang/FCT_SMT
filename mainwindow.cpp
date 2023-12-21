@@ -468,7 +468,9 @@ void MainWindow::handleTimeout_1()      //发送读参数指令
     //读玩mcu后开始读电压采集器
     if(readmcu == 1)
     {
-
+        if()
+        //发送读电压盒子指令，收到所有反馈则测试完成
+        serialCrc_Send(serial_frock,frock_all,8);
     }
 
 
