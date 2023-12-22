@@ -423,26 +423,35 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
 
 void MainWindow::handleTimeout_1()      //发送读参数指令
 {
-    //    if(F1_code == 0x0C)
-    //    {
-    //        //翻页
-    //        //跳转到表格指定位置
-    //        ui->tableWidget->setVerticalScrollMode(QAbstractItemView::ScrollMode::ScrollPerPixel);
-    //        ui->tableWidget->verticalScrollBar()->setSingleStep(2);
-    //        ui->tableWidget->verticalScrollBar()->setSliderPosition(10*30);//跳转行到指定位置
-    //        ui->tableWidget->viewport()->installEventFilter(this);//对此对象安装事件过滤器
-    //        ui->tableWidget->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);//设置滚动模式按照像素滑动，做表格滑动时使用
-    //    }
+        if(F1_code == 0x0A)
+        {
+        // 获取目标行的Item
+        QTableWidgetItem *item = ui->tableWidget->item(6, 0); // 这里假设你要跳转到第一列的项
 
-    //    if(F1_code == 0x12)
-    //    {
-    //        //跳转到表格指定位置
-    //        ui->tableWidget->setVerticalScrollMode(QAbstractItemView::ScrollMode::ScrollPerPixel);
-    //        ui->tableWidget->verticalScrollBar()->setSingleStep(2);
-    //        ui->tableWidget->verticalScrollBar()->setSliderPosition(18*30);//跳转行到指定位置
-    //        ui->tableWidget->viewport()->installEventFilter(this);//对此对象安装事件过滤器
-    //        ui->tableWidget->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);//设置滚动模式按照像素滑动，做表格滑动时使用
-    //    }
+        // 滚动到目标项
+        ui->tableWidget->scrollToItem(item, QAbstractItemView::PositionAtTop);
+
+        }
+
+        if(F1_code == 0x0e)
+        {
+        // 获取目标行的Item
+        QTableWidgetItem *item = ui->tableWidget->item(10, 0); // 这里假设你要跳转到第一列的项
+
+        // 滚动到目标项
+        ui->tableWidget->scrollToItem(item, QAbstractItemView::PositionAtTop);
+
+        }
+
+        if(F1_code == 0x13)
+        {
+        // 获取目标行的Item
+        QTableWidgetItem *item = ui->tableWidget->item(16, 0); // 这里假设你要跳转到第一列的项
+
+        // 滚动到目标项
+        ui->tableWidget->scrollToItem(item, QAbstractItemView::PositionAtTop);
+
+        }
 
     qDebug() << "handleTimeout_1" << flag_err << receive_succsee;
 
@@ -467,6 +476,7 @@ void MainWindow::handleTimeout_1()      //发送读参数指令
     //读玩mcu后开始读电压采集器
     if(readmcu == 1 && readfrock == 0 )
     {
+
         //发送读电压盒子指令，收到所有反馈则测试完成
         serialCrc_Send(serial_frock,frock_all,8);
         qDebug() << "serialCrc_Send(serial_frock,frock_all,8);";
@@ -475,6 +485,14 @@ void MainWindow::handleTimeout_1()      //发送读参数指令
 
     if(readmcu == 1 && readfrock == 1 && controlldsboard == 0)
     {
+
+        // 获取目标行的Item
+        QTableWidgetItem *item = ui->tableWidget->item(20, 0); // 这里假设你要跳转到第一列的项
+
+        // 滚动到目标项
+        ui->tableWidget->scrollToItem(item, QAbstractItemView::PositionAtTop);
+
+
         //将LDS模组和wifi模组的状态写入表格
         if(periph_state[21] == 1)
         {
@@ -524,12 +542,20 @@ void MainWindow::handleTimeout_1()      //发送读参数指令
         }
 
         controlldsboard = 1;
+
+        // 获取目标行的Item
+        item = ui->tableWidget->item(24, 0); // 这里假设你要跳转到第一列的项
+
+        // 滚动到目标项
+        ui->tableWidget->scrollToItem(item, QAbstractItemView::PositionAtTop);
+
         //return;
         //m_pTimer_1->stop();     //关闭定时器
     }
 
     if(controlldsboard != 0 && controlldsboard < 8)    //继电器控制撞板
     {
+
 
         if(controlldsboard == 2)
         {
@@ -655,8 +681,8 @@ void MainWindow::MaincontrolDataReceived()
 
         for(int i = 0; i < data.size(); i++)
         {
-        Read_data[count_number] = data.at(i);
-        count_number++;
+            Read_data[count_number] = data.at(i);
+            count_number++;
         }
 
         /*
@@ -1461,9 +1487,9 @@ void MainWindow::oneTestresule(bool result, int row)
             flag_err++;
             if( flag_err == 3  || row >=17)
             {
-                if(row == 16)
+                if(row == 16)   //第一部分测试完成
                     readmcu = 1;
-                periph_state[row] = 0;
+                periph_state[row] = 2;
                 flag_err = 0;
                 ui->tableWidget->setItem(row,4,new QTableWidgetItem("NG"));
                 ui->tableWidget->item(row,4)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
@@ -1652,7 +1678,7 @@ void MainWindow::Table_init()
 {
     // 创建字体对象并设置字体大小
     QFont font;
-    font.setPointSize(16);  // 设置字体大小为14
+    font.setPointSize(25);  // 设置字体大小为14
 
 
     // 将字体应用于整个表格
@@ -1678,7 +1704,7 @@ void MainWindow::Table_init()
 
 
     //编辑单元格内容
-    ui->tableWidget->setItem(1,2,new QTableWidgetItem("你好"));
+    //ui->tableWidget->setItem(1,2,new QTableWidgetItem("你好"));
     QString num;
     for(int i = 0; i < 32; i++)
     {
@@ -1686,16 +1712,17 @@ void MainWindow::Table_init()
     }
 
 
+    ui->tableWidget->verticalHeader()->setDefaultSectionSize(50);
     //设置水平表头为拉伸模式
    // ui->tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 
 
 
-    ui->tableWidget->setColumnWidth(0, 200);  // 设置第一列宽度为150
-    ui->tableWidget->setColumnWidth(1, 251);  // 设置第一列宽度为150
-    ui->tableWidget->setColumnWidth(2, 200);  // 设置第一列宽度为150
-    ui->tableWidget->setColumnWidth(3, 200);  // 设置第一列宽度为150
-    ui->tableWidget->setColumnWidth(4, 200);  // 设置第一列宽度为150
+    ui->tableWidget->setColumnWidth(0, 140);  // 设置第一列宽度为150
+    ui->tableWidget->setColumnWidth(1, 350);  // 设置第一列宽度为150
+    ui->tableWidget->setColumnWidth(2, 190);  // 设置第一列宽度为150
+    ui->tableWidget->setColumnWidth(3, 190);  // 设置第一列宽度为150
+    ui->tableWidget->setColumnWidth(4, 175);  // 设置第一列宽度为150
    // ui->tableWidget->item(1,2 )->setBackground(QColor(255,0,0));    //设置单元格背景
     // ui->tableWidget->setStyleSheet("background-color: lightgray;");
     //    for (int col = 0; col < ui->tableWidget->columnCount(); ++col) {
@@ -1753,5 +1780,15 @@ void MainWindow::on_OpenSerialButton_2_clicked()
 
     relaycontrol_all[7] = 0x09;    //闭合继电器4，启动成功
     serialCrc_Send(serial_relay,relaycontrol_all,13);
+
+
+    //int targetRow = 4; // 要跳转到的行，索引从0开始
+
+
+//    ui->tableWidget->setVerticalScrollMode(QAbstractItemView::ScrollMode::ScrollPerPixel);
+//    ui->tableWidget->verticalScrollBar()->setSingleStep(2);
+//    ui->tableWidget->verticalScrollBar()->setSliderPosition(10*30);//跳转行到指定位置
+//    ui->tableWidget->viewport()->installEventFilter(this);//对此对象安装事件过滤器
+//    ui->tableWidget->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);//设置滚动模式按照像素滑动，做表格滑动时使用
 }
 
