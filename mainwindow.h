@@ -223,13 +223,13 @@ private:
     uchar periph_state[40] = {0};   //1通过，2不通过
     uchar flag_err = 0;     //如果检测失败则重新检测（最多三次）
     uchar receive_succsee = 1;  //接收成功标志位
-    char start_mainboard = 5;
+    char start_mainboard = 0;
 
     quint8 mcu_state = 0;   //MCU状态标志位
     quint8 ap_state = 0;    //AP状态标志位
     quint8 apactivatedState = 0;    //AP激活状态
     quint8 mcuactivatedState = 0;   //mcu激活状态
-    uchar readmcu = 0,readfrock = 0;
+    uchar readmcu = 0,readfrock = 0,controlldsboard =0 ;
 
     quint16 down_look[3] = {1850,1850,1500};     //下视（左中右）阈值
     quint16 down_look_flag[6] = {0,0,0,0,0,0};

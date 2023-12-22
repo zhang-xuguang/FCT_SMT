@@ -278,9 +278,6 @@ void MainWindow::serialCheckHandleTimeout()
 }
 
 
-
-
-
 void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有功能状态
 {
     //MCU在线状态
@@ -349,9 +346,10 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
 
     }
 
-    qDebug() << "353";
+
     if(start_mainboard == 6)
     {
+        qDebug() << "352";
         relaycontrol_all[7] |= 0x04;    //闭合继电器3,启动机器
         serialCrc_Send(serial_relay,relaycontrol_all,13);
     }
@@ -361,11 +359,12 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
 
     if(mcu_state == 1 && start_mainboard == 0 && relaycontrol_all[7] != 0x01)
     {
+        qDebug() << "361";
         relaycontrol_all[7] = 0x01;    //断开继电器3，启动成功
         serialCrc_Send(serial_relay,relaycontrol_all,13);
 
     }
-qDebug() << "369";
+
     //判断扫地机的MCU和AP是否在线
     if(ap_state == 1 && mcu_state == 1)
     {
@@ -458,7 +457,7 @@ void MainWindow::handleTimeout_1()      //发送读参数指令
             if(F1_code == 0x0F)
                 F1_code = 0x11;
             if(F1_code == 0x12)
-                F1_code = 0x62;
+                F1_code = 0x13;
         }
 
         Read_parameter_CHECK[5] = F1_code;
@@ -466,14 +465,88 @@ void MainWindow::handleTimeout_1()      //发送读参数指令
     }
 
     //读玩mcu后开始读电压采集器
-    if(readmcu == 1)
+    if(readmcu == 1 && readfrock == 0 )
     {
-        if()
         //发送读电压盒子指令，收到所有反馈则测试完成
         serialCrc_Send(serial_frock,frock_all,8);
+        qDebug() << "serialCrc_Send(serial_frock,frock_all,8);";
+        return ;
     }
 
+    if(readmcu == 1 && readfrock == 1 && controlldsboard == 0)
+    {
+        //将LDS模组和wifi模组的状态写入表格
+        if(periph_state[21] == 1)
+        {
+            ui->tableWidget->setItem(21,2,new QTableWidgetItem("1"));
+            ui->tableWidget->item(21,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+            Testing_result[21] = "1";
+            oneTestresule(true,21);
 
+        }
+        else
+        {
+            ui->tableWidget->setItem(21,2,new QTableWidgetItem("0"));
+            ui->tableWidget->item(21,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+            oneTestresule(false,21);
+        }
+
+        //将LDS模组和wifi模组的状态写入表格
+        if(periph_state[22] == 1)
+        {
+            ui->tableWidget->setItem(22,2,new QTableWidgetItem("1"));
+            ui->tableWidget->item(22,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+            Testing_result[22] = "1";
+            oneTestresule(true,22);
+
+        }
+        else
+        {
+            ui->tableWidget->setItem(22,2,new QTableWidgetItem("0"));
+            ui->tableWidget->item(22,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+            oneTestresule(false,22);
+        }
+
+        //将LDS模组和wifi模组的状态写入表格
+        if(periph_state[23] == 1)
+        {
+            ui->tableWidget->setItem(23,2,new QTableWidgetItem("1"));
+            ui->tableWidget->item(23,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+            Testing_result[23] = "1";
+            oneTestresule(true,23);
+
+        }
+        else
+        {
+            ui->tableWidget->setItem(23,2,new QTableWidgetItem("0"));
+            ui->tableWidget->item(23,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+            oneTestresule(false,23);
+        }
+
+        controlldsboard = 1;
+        //return;
+        //m_pTimer_1->stop();     //关闭定时器
+    }
+
+    if(controlldsboard != 0 && controlldsboard < 8)    //继电器控制撞板
+    {
+
+        if(controlldsboard == 2)
+        {
+            qDebug() << "534";
+            relaycontrol_all[7] = 0x09;    //闭合继电器4，启动成功
+            serialCrc_Send(serial_relay,relaycontrol_all,13);
+
+        }
+        if(controlldsboard == 7)
+        {
+            qDebug() << "540";
+            relaycontrol_all[7] = 0x01;    //闭合继电器4，启动成功
+            serialCrc_Send(serial_relay,relaycontrol_all,13);
+            m_pTimer_1->stop();
+        }
+        controlldsboard++;
+    }
 
 }
 
@@ -869,8 +942,6 @@ void MainWindow::MaincontrolDataReceived()
                         case 0x0F:      //电源按键（0未触发，1触发）
                             peripvalue = QString::number(Read_data[head_num+4]);
 
-
-
                             break;
 
                         case 0x10:      //回冲按键（0未触发，1触发）
@@ -945,6 +1016,84 @@ void MainWindow::MaincontrolDataReceived()
 
                             break;
 
+                        case 0x13:      //驱动轮码盘-左
+
+                            receive_succsee = 1;
+                            if((Read_data[head_num+4] & 0x10) == 0x10)    //负数
+                            {
+                                peripvalue = "-" + QString::number(~(Read_data[head_num+4] << 8 | Read_data[head_num+5]) & 0xeFFF);
+                                ui->tableWidget->setItem(15,2,new QTableWidgetItem(peripvalue));
+                                ui->tableWidget->item(15,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+                                Testing_result[15] = peripvalue;
+                                if((~(Read_data[head_num+4] << 8 | Read_data[head_num+5]) & 0xeFFF) > 700)
+                                {
+                                    oneTestresule(true,15);
+                                }
+                                else
+                                {
+                                    oneTestresule(false,15);
+                                }
+                            }
+                            else        //正数
+                            {
+                                peripvalue = QString::number(Read_data[head_num+4] << 8 | Read_data[head_num+5]);
+                                ui->tableWidget->setItem(15,2,new QTableWidgetItem(peripvalue));
+                                ui->tableWidget->item(15,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+                                Testing_result[15] = peripvalue;
+                                if(((Read_data[head_num+4] << 8 | Read_data[head_num+5]) & 0xeFFF) > 700)
+                                {
+                                    oneTestresule(true,15);
+                                }
+                                else
+                                {
+                                    oneTestresule(false,15);
+                                }
+
+                            }
+
+                            break;
+
+                        case 0x14:      //驱动轮码盘-右
+                            receive_succsee = 1;
+                            if((Read_data[head_num+4] & 0x10) == 0x10)    //负数
+                            {
+
+                                peripvalue = "-" + QString::number(~(Read_data[head_num+4] << 8 | Read_data[head_num+5]) & 0xeFFF);
+                                ui->tableWidget->setItem(16,2,new QTableWidgetItem(peripvalue));
+                                ui->tableWidget->item(16,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+                                Testing_result[16] = peripvalue;
+                                if((~(Read_data[head_num+4] << 8 | Read_data[head_num+5]) & 0xeFFF) > 700)
+                                {
+
+                                    readmcu = 1;
+                                    oneTestresule(true,16);
+                                }
+                                else
+                                {
+                                    qDebug() << "0x14驱动轮"<<"-"<<~(Read_data[head_num+4] << 8 | Read_data[head_num+5]) ;
+                                    oneTestresule(false,16);
+                                }
+                            }
+                            else        //正数
+                            {
+                                peripvalue = QString::number(Read_data[head_num+4] << 8 | Read_data[head_num+5]);
+                                ui->tableWidget->setItem(16,2,new QTableWidgetItem(peripvalue));
+                                ui->tableWidget->item(16,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+                                Testing_result[16] = peripvalue;
+                                if(((Read_data[head_num+4] << 8 | Read_data[head_num+5]) & 0xeFFF) > 700)
+                                {
+                                    readmcu = 1;
+                                    oneTestresule(true,16);
+                                }
+                                else
+                                {
+                                    oneTestresule(false,16);
+                                }
+
+                            }
+                            break;
+
+
                         case 0x61:
                             ap_version = QString::number(Read_data[head_num+4]) + "." +
                                          QString::number(Read_data[head_num+5]) + "." +
@@ -960,9 +1109,8 @@ void MainWindow::MaincontrolDataReceived()
                                           QString::number(Read_data[head_num+6]);
 
                             ui->mcuversionlineEdit->setText(mcu_version);
-                            m_pTimer_1->stop();
                             F1_code = 2;
-                            JudegVersion();
+                            //JudegVersion();
 
                             break;
 
@@ -993,141 +1141,23 @@ void MainWindow::MaincontrolDataReceived()
 
                     if(Read_data[head_num+2] == 0xF3)
                     {
-                        if(Read_data[head_num+3] == 0x01)
-                        {
-                            if((Read_data[head_num+4] == 0x01) && (periph_state[1] != 2))   //电池电压
-                            {
-                                //如果检测过不通过，则不再给予通过
-                                periph_state[1] = 1;    //通过
-                            }
-                            else
-                            {
-                                periph_state[1] = 2;    //不通过
-                            }
-                        }
-                        if(Read_data[head_num+3] == 0x02)
-                        {
-                            if((Read_data[head_num+4] == 0x01) && (periph_state[2] != 2))
-                            {
-                                //充电桩电压
-                                periph_state[2] = 1;
-                            }
-                            else
-                            {
 
-                                periph_state[2] =2;
-                            }
-                        }
-
-                        if(Read_data[head_num+3] == 0x03)
-                        {
-                            if((Read_data[head_num+4] == 0x01)&& periph_state[3] != 2)   //电池电流
-                            {
-
-                                periph_state[3] = 1;
-                            }
-                            else
-                            {
-
-                                periph_state[3] = 2;
-                            }
-                        }
-
-                        if(Read_data[head_num+3] == 0x04)
-                        {
-                            if((Read_data[head_num+4] == 0x01)&& periph_state[4] != 2)   //风机转速
-                            {
-
-                                periph_state[4] = 1;
-                            }
-                            else
-                            {
-
-                                periph_state[4] = 2;
-                            }
-                        }
-
-                        if(Read_data[head_num+3] == 0x05)
-                        {
-                            if((Read_data[head_num+4] == 0x01) && periph_state[5] != 2)   //滚刷电流
-                            {
-
-                                periph_state[5] = 1;
-                            }
-                            else
-                            {
-
-                                periph_state[5] = 2;
-                            }
-                        }
-
-                        if(Read_data[head_num+3] == 0x06)
-                        {
-                            if((Read_data[head_num+4] == 0x01) && periph_state[6] != 2)   //边刷电流
-                            {
-
-                                periph_state[6] = 1;
-                            }
-                            else
-                            {
-
-                                periph_state[6] = 2;
-                            }
-                        }
-
-                        if(Read_data[head_num+3] == 0x07)
-                        {
-                            if((Read_data[head_num+4] == 0x01) && periph_state[7] != 2)   //水泵电流
-                            {
-
-                                periph_state[7] = 1;
-                            }
-                            else
-                            {
-
-                                periph_state[7] = 2;
-                            }
-                        }
-
-                        if(Read_data[head_num+3] == 0x08)
-                        {
-                            if((Read_data[head_num+4] == 0x01) && periph_state[8] != 2)   //驱动轮电流-左
-                            {
-
-                                periph_state[8] = 1;
-                            }
-                            else
-                            {
-
-                                periph_state[8] = 2;
-                            }
-                        }
-
-                        if(Read_data[head_num+3] == 0x09)
-                        {
-                            if((Read_data[head_num+4] == 0x01) && periph_state[9] != 2)   //驱动轮电流-右
-                            {
-
-                                periph_state[9] = 1;
-                            }
-                            else
-                            {
-
-                                periph_state[9] = 2;
-                            }
-                        }
 
                         if(Read_data[head_num+3] == 0x0D)
                         {
-                            if(Read_data[head_num+4] == 0x01 &&  periph_state[13] != 2)   //电源按键
+                            if(Read_data[head_num+4] == 0x01 )   //电源按键
                             {
-                                periph_state[13] = 1;
+                            ui->tableWidget->setItem(30,2,new QTableWidgetItem("1"));
+                            ui->tableWidget->item(30,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+                            Testing_result[30] = "1";
+                            oneTestresule(true,30);
 
                             }
                             else
                             {
-                                periph_state[13] = 2;
-
+                            ui->tableWidget->setItem(30,2,new QTableWidgetItem("0"));
+                            ui->tableWidget->item(30,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+                            oneTestresule(false,30);
                             }
                         }
 
@@ -1135,72 +1165,12 @@ void MainWindow::MaincontrolDataReceived()
                         {
                             if(Read_data[head_num+4] == 0x01 &&  periph_state[14] != 2)   //陀螺仪
                             {
-                                periph_state[14] = 1;
+                                periph_state[23] = 1;
 
                             }
                             else
                             {
-                                periph_state[14] = 2;
-
-                            }
-                        }
-
-                        if(Read_data[head_num+3] == 0x0F)
-                        {
-
-                            if(Read_data[head_num+4] == 0x01 &&  periph_state[15] != 2)   //红外接收灯-1
-                            {
-                                periph_state[15] = 1;
-
-                            }
-                            else
-                            {
-                                periph_state[15] = 2;
-
-                            }
-                        }
-
-                        if(Read_data[head_num+3] == 0x10)
-                        {
-
-                            if(Read_data[head_num+4] == 0x01 &&  periph_state[16] != 2)   //红外接收灯-2
-                            {
-                                periph_state[16] = 1;
-
-                            }
-                            else
-                            {
-                                periph_state[16] = 2;
-
-                            }
-                        }
-
-                        if(Read_data[head_num+3] == 0x11)
-                        {
-
-                            if(Read_data[head_num+4] == 0x01 &&  periph_state[17] != 2)   //红外接收灯-3
-                            {
-                                periph_state[17] = 1;
-
-                            }
-                            else
-                            {
-                                periph_state[17] = 2;
-
-                            }
-                        }
-
-                        if(Read_data[head_num+3] == 0x12)
-                        {
-
-                            if(Read_data[head_num+4] == 0x01 &&  periph_state[18] != 2)   //红外接收灯-4
-                            {
-                                periph_state[18] = 1;
-
-                            }
-                            else
-                            {
-                                periph_state[18] = 2;
+                                periph_state[23] = 2;
 
                             }
                         }
@@ -1219,99 +1189,107 @@ void MainWindow::MaincontrolDataReceived()
                             }
                         }
 
-                        if(Read_data[head_num+3] == 0x14)
-                        {
-                            if(Read_data[head_num+4] == 0x01 &&  periph_state[20] != 2)   //驱动轮码盘-右
-                            {
-                                periph_state[20] = 1;
-
-                            }
-                            else
-                            {
-                                periph_state[20] = 2;
-
-                            }
-                        }
-
                         if(Read_data[head_num+3] == 0x17)
                         {
-                            if(Read_data[head_num+4] == 0x01 &&  periph_state[23] != 2)   //LDS撞板
+                            if(Read_data[head_num+4] == 0x01)   //LDS撞板
                             {
                                 periph_state[23] = 1;
 
+                                ui->tableWidget->setItem(24,2,new QTableWidgetItem("1"));
+                                ui->tableWidget->item(24,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+                                Testing_result[24] = "1";
+                                oneTestresule(true,24);
+
                             }
                             else
                             {
-                                periph_state[23] = 2;
-
+                                ui->tableWidget->setItem(24,2,new QTableWidgetItem("0"));
+                                ui->tableWidget->item(24,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+                                oneTestresule(false,24);
                             }
                         }
 
                         if(Read_data[head_num+3] == 0x18)
                         {
-                            if(Read_data[head_num+4] == 0x01 && periph_state[24] != 2)   //左撞板
+                            if(Read_data[head_num+4] == 0x01)   //左撞板
                             {
-                                periph_state[24] = 1;
+                                ui->tableWidget->setItem(25,2,new QTableWidgetItem("1"));
+                                ui->tableWidget->item(25,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+                                Testing_result[25] = "1";
+                                oneTestresule(true,25);
 
                             }
                             else
                             {
-                                periph_state[24] = 1;
-
+                                ui->tableWidget->setItem(25,2,new QTableWidgetItem("0"));
+                                ui->tableWidget->item(25,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+                                oneTestresule(false,25);
                             }
                         }
 
                         if(Read_data[head_num+3] == 0x19)
                         {
-                            if(Read_data[head_num+4] == 0x01 && periph_state[25] != 2)   //右撞板
+                            if(Read_data[head_num+4] == 0x01)   //右撞板
                             {
-                                periph_state[25] = 1;
+                                ui->tableWidget->setItem(26,2,new QTableWidgetItem("1"));
+                                ui->tableWidget->item(26,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+                                Testing_result[26] = "1";
+                                oneTestresule(true,26);
 
                             }
                             else
                             {
-                                periph_state[25] = 2;
-
+                                ui->tableWidget->setItem(26,2,new QTableWidgetItem("0"));
+                                ui->tableWidget->item(26,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+                                oneTestresule(false,26);
                             }
                         }
 
                         if(Read_data[head_num+3] == 0x1A)
                         {
-                            if(Read_data[head_num+4] == 0x01 && periph_state[26] != 2)   //抹布支架检测（霍尔）
+                            if(Read_data[head_num+4] == 0x01)   //抹布支架检测（霍尔）
                             {
-                                periph_state[26] = 1;
+                                ui->tableWidget->setItem(27,2,new QTableWidgetItem("1"));
+                                ui->tableWidget->item(27,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+                                Testing_result[27] = "1";
+                                oneTestresule(true,27);
 
                             }
                             else
                             {
-                                periph_state[26] = 2;
-
+                                ui->tableWidget->setItem(27,2,new QTableWidgetItem("0"));
+                                ui->tableWidget->item(27,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+                                oneTestresule(false,27);
                             }
                         }
 
                         if(Read_data[head_num+3] == 0x1B)
                         {
-                            if(Read_data[head_num+4] == 0x01 && periph_state[27] != 2)   //尘盒检测（霍尔）
+                            if(Read_data[head_num+4] == 0x01 )   //尘盒检测（霍尔）
                             {
-                                periph_state[27] = 1;
+                                ui->tableWidget->setItem(28,2,new QTableWidgetItem("1"));
+                                ui->tableWidget->item(28,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+                                Testing_result[28] = "1";
+                                oneTestresule(true,28);
 
                             }
                             else
                             {
-                                periph_state[27] = 2;
-
+                                ui->tableWidget->setItem(28,2,new QTableWidgetItem("0"));
+                                ui->tableWidget->item(28,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+                                oneTestresule(false,28);
                             }
                         }
                         if(Read_data[head_num+3] == 0x1C)
                         {
                             if(Read_data[head_num+4] == 0x01 && periph_state[28] != 2)   //WiFi 模组
                             {
-                                periph_state[28] = 1;
+                                periph_state[21] = 1;
 
                             }
                             else
                             {
-                                periph_state[28] = 2;
+                                periph_state[21] = 2;
 
                             }
                         }
@@ -1320,26 +1298,30 @@ void MainWindow::MaincontrolDataReceived()
 
                             if(Read_data[head_num+4] == 0x01 && periph_state[29] != 2)   //LDS 模组
                             {
-                                periph_state[29] = 1;
+                                periph_state[22] = 1;
 
                             }
                             else
                             {
-                                periph_state[29] = 2;
+                                periph_state[22] = 2;
 
                             }
                         }
                         if(Read_data[head_num+3] == 0x1E)
                         {
-                            if(Read_data[head_num+4] == 0x01 && periph_state[30] != 2)   //回充按键
+                            if(Read_data[head_num+4] == 0x01)   //回充按键
                             {
-                                periph_state[30] = 1;
+                                ui->tableWidget->setItem(29,2,new QTableWidgetItem("1"));
+                                ui->tableWidget->item(29,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+                                Testing_result[29] = "1";
+                                oneTestresule(true,29);
 
                             }
                             else
                             {
-                                periph_state[30] = 2;
-
+                                ui->tableWidget->setItem(29,2,new QTableWidgetItem("0"));
+                                ui->tableWidget->item(29,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+                                oneTestresule(false,29);
                             }
                         }
 
@@ -1374,11 +1356,77 @@ void MainWindow::forckDataReceived()
 
         for(int i= 0; i < frock_buff.size(); i++)
         {
-
             Read_data[i] = frock_buff.at(i);
             printf("%x ",Read_data[i]);
         }
         std::cout << std::endl;
+
+        //判断crc校验是否正确
+        if(CRC_Compute(Read_data,frock_buff.size() - 2) == (Read_data[35] << 8 | Read_data[36]))
+        {
+            //电池电压
+            receive_succsee = 1;
+
+            peripvalue = QString::number(Read_data[3] << 8 | Read_data[4]);
+            ui->tableWidget->setItem(17,2,new QTableWidgetItem(peripvalue));
+            ui->tableWidget->item(17,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+            Testing_result[17] = peripvalue;
+            if((Read_data[4] << 8 | Read_data[5]) >= 1600)
+            {
+                oneTestresule(true,17);
+            }
+            else
+            {
+                oneTestresule(false,17);
+            }
+
+
+            //LDS电压
+            peripvalue = QString::number(Read_data[7] << 8 | Read_data[8]);
+            ui->tableWidget->setItem(18,2,new QTableWidgetItem(peripvalue));
+            ui->tableWidget->item(18,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+            Testing_result[18] = peripvalue;
+            if((Read_data[4] << 8 | Read_data[5]) >= 1600)
+            {
+                oneTestresule(true,18);
+            }
+            else
+            {
+                oneTestresule(false,18);
+            }
+
+
+            peripvalue = QString::number(Read_data[9] << 8 | Read_data[10]);
+            ui->tableWidget->setItem(19,2,new QTableWidgetItem(peripvalue));
+            ui->tableWidget->item(19,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+            Testing_result[19] = peripvalue;
+            if((Read_data[4] << 8 | Read_data[5]) >= 1600)
+            {
+                oneTestresule(true,19);
+            }
+            else
+            {
+                oneTestresule(false,19);
+            }
+
+
+            peripvalue = QString::number(Read_data[11] << 8 | Read_data[12]);
+            ui->tableWidget->setItem(20,2,new QTableWidgetItem(peripvalue));
+            ui->tableWidget->item(20,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+            Testing_result[20] = peripvalue;
+            if((Read_data[4] << 8 | Read_data[5]) >= 1600)
+            {
+                oneTestresule(true,20);
+            }
+            else
+            {
+                oneTestresule(false,20);
+            }
+
+            readfrock = 1;
+
+        }
+
 
         qDebug()<<frock_buff.toHex(' ');
         frock_buff.clear();
@@ -1400,6 +1448,7 @@ void MainWindow::oneTestresule(bool result, int row)
 {
         if(result)
         {
+
             periph_state[row] = 1;
             ui->tableWidget->setItem(row,4,new QTableWidgetItem("PASS"));
             for(int a = 0; a < 5; a++)
@@ -1410,8 +1459,10 @@ void MainWindow::oneTestresule(bool result, int row)
         else
         {
             flag_err++;
-            if( flag_err == 3 )
+            if( flag_err == 3  || row >=17)
             {
+                if(row == 16)
+                    readmcu = 1;
                 periph_state[row] = 0;
                 flag_err = 0;
                 ui->tableWidget->setItem(row,4,new QTableWidgetItem("NG"));
@@ -1439,7 +1490,7 @@ MainWindow::~MainWindow()
 //FCT开始
 void MainWindow::on_fct1pushButton_clicked()
 {
-    FCT_CHECK[6] = 0x11;
+    FCT_CHECK[6] = 0x01;
     serialCrc_Send(serial_mainboard,FCT_CHECK,11);
 
 
@@ -1480,7 +1531,7 @@ void MainWindow::serialCrc_Send(QSerialPort *serial,quint8 *puchMsg, quint16 usD
 void MainWindow::on_fct2pushButton_clicked()
 {
 
-    FCT_CHECK[6] = 0x12;
+    FCT_CHECK[6] = 0x02;
     serialCrc_Send(serial_mainboard,FCT_CHECK,11);
 
     relaycontrol_all[7] = 0x00;
@@ -1700,6 +1751,7 @@ void MainWindow::ReadConfigFile()
 void MainWindow::on_OpenSerialButton_2_clicked()
 {
 
-    serialCrc_Send(serial_frock,frock_all,8);
+    relaycontrol_all[7] = 0x09;    //闭合继电器4，启动成功
+    serialCrc_Send(serial_relay,relaycontrol_all,13);
 }
 
