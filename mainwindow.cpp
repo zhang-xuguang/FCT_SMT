@@ -41,6 +41,15 @@
 #define TIMER_TIMEOUT_1   (300)
 
 
+/*
+1、尘盒
+2、左下视
+3、雷达
+4、水泵，电流0
+
+*/
+
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -75,7 +84,7 @@ MainWindow::MainWindow(QWidget *parent)
     //连接串口
     m_pTimer_2 = new QTimer(this);
     connect(m_pTimer_2, SIGNAL(timeout()), this, SLOT(serialCheckHandleTimeout()));
-    m_pTimer_2->start(100);
+    m_pTimer_2->start(300);
 
     connect(ui->updatefrelineEdit, &QLineEdit::returnPressed, this, &MainWindow::on_updetafreTextChanged);
     ui->updatefrelineEdit->setMaxLength(4);
@@ -88,6 +97,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->serialcontrolboardlable->setFrameShape (QFrame::Box);
     ui->serialfrocklable->setFrameShape (QFrame::Box);
     ui->serialrelaylable->setFrameShape (QFrame::Box);
+
+
 
     //设置版本号
     ui->mcuversionlineEdit_2->setText(mcu_version_setext);
@@ -122,7 +133,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         if(scannedData != ui->shapcodelineedit->text()) //检测到扫码枪内容更新
         {
             //闭合继电器2，提供3.3V电压
-            relaycontrol_all[7] = 0x02;
+            relaycontrol_all[7] = 0x01;
             serialCrc_Send(serial_relay,relaycontrol_all,13);
             start_mainboard = 7;    //设置定时器倒计时时间
 
@@ -157,30 +168,32 @@ void MainWindow::serialCheckHandleTimeout()
             QString portName = serialPortInfo.portName();
 
 
-            if(!serial_frock->isOpen())
+            if(!serial_mainboard->isOpen())
             {
                 serial_port[0] = portName;
-                serial_frock->setPort(*it);                      // 在对象中设置串口
-                if(serial_frock->open(QIODevice::ReadWrite))      // 以读写方式打开串口
+                serial_mainboard->setPort(*it);                      // 在对象中设置串口
+                if(serial_mainboard->open(QIODevice::ReadWrite))      // 以读写方式打开串口
                 {
                     //ui->PortBox->addItem(info.portName());       // 添加计算机中的端口
-                    //serial_frock->close();                   // 关闭
-                    serial_frock->setReadBufferSize(1024);
+                    //serial_mainboard->close();                   // 关闭
+                    serial_mainboard->setReadBufferSize(2048);
 
                     // 参数配置
-                    serial_frock->setBaudRate(QSerialPort::Baud9600);
+                    serial_mainboard->setBaudRate(QSerialPort::Baud115200);
                     // 校验，校验默认选择无
-                    serial_frock->setParity(QSerialPort::NoParity);
+                    serial_mainboard->setParity(QSerialPort::NoParity);
                     // 数据位，数据位默认选择8位
-                    serial_frock->setDataBits(QSerialPort::Data8);
+                    serial_mainboard->setDataBits(QSerialPort::Data8);
                     // 停止位，停止位默认选择1位
-                    serial_frock->setStopBits(QSerialPort::OneStop);
+                    serial_mainboard->setStopBits(QSerialPort::OneStop);
                     // 控制流，默认选择无
-                    serial_frock->setFlowControl(QSerialPort::NoFlowControl);
+                    serial_mainboard->setFlowControl(QSerialPort::NoFlowControl);
 
                     //m_pTimer->start(TIMER_TIMEOUT);
-                    connect(serial_frock,&QSerialPort::readyRead,this,&MainWindow::forckDataReceived);      // 接收数据
-                    ui->serialfrocklable->setStyleSheet("QLabel{background-color:rgb(0,255,0);}");
+                    connect(serial_mainboard,&QSerialPort::readyRead,this,&MainWindow::MaincontrolDataReceived);      // 接收数据
+
+                    ui->serialcontrolboardlable->setStyleSheet("QLabel{background-color:rgb(0,255,0);}");
+
 
                     qDebug() << "串口1打开成功";
                 }
@@ -233,31 +246,31 @@ void MainWindow::serialCheckHandleTimeout()
             if( portName != serial_port[0] && portName != serial_port[1]  )
             {
 
-                serial_mainboard->setPort(*it);
-                if(!serial_mainboard->isOpen())
+                serial_frock->setPort(*it);
+                if(!serial_frock->isOpen())
                 {                    // 在对象中设置串口
-                    if(serial_mainboard->open(QIODevice::ReadWrite))      // 以读写方式打开串口
+                    if(serial_frock->open(QIODevice::ReadWrite))      // 以读写方式打开串口
                     {
                         //ui->PortBox->addItem(info.portName());       // 添加计算机中的端口
-                        //serial_mainboard->close();                       // 关闭
+                        //serial_frock->close();                       // 关闭
 
-                        serial_mainboard->setReadBufferSize(2048);
+                        serial_frock->setReadBufferSize(1024);
 
                         // 参数配置
-                        serial_mainboard->setBaudRate(QSerialPort::Baud115200);
+                        serial_frock->setBaudRate(QSerialPort::Baud9600);
                         // 校验，校验默认选择无
-                        serial_mainboard->setParity(QSerialPort::NoParity);
+                        serial_frock->setParity(QSerialPort::NoParity);
                         // 数据位，数据位默认选择8位
-                        serial_mainboard->setDataBits(QSerialPort::Data8);
+                        serial_frock->setDataBits(QSerialPort::Data8);
                         // 停止位，停止位默认选择1位
-                        serial_mainboard->setStopBits(QSerialPort::OneStop);
+                        serial_frock->setStopBits(QSerialPort::OneStop);
                         // 控制流，默认选择无
-                        serial_mainboard->setFlowControl(QSerialPort::NoFlowControl);
+                        serial_frock->setFlowControl(QSerialPort::NoFlowControl);
 
-                        connect(serial_mainboard,&QSerialPort::readyRead,this,&MainWindow::MaincontrolDataReceived);      // 接收数据
-
+                        connect(serial_frock,&QSerialPort::readyRead,this,&MainWindow::forckDataReceived);      // 接收数据
+                        ui->serialfrocklable->setStyleSheet("QLabel{background-color:rgb(0,255,0);}");
                         qDebug() << "串口3打开成功";
-                        ui->serialcontrolboardlable->setStyleSheet("QLabel{background-color:rgb(0,255,0);}");
+
                         m_pTimer->start(TIMER_TIMEOUT);
 
                         m_pTimer_2->stop();
@@ -298,32 +311,48 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
 
     qDebug() << "handleTimeout" ;
 
+
     //判断所有检测项目是否通过
     int flag = 1;
-    for(int i = 1; i <= 34; i++)
+    for(int i = 0; i <= 30; i++)
     {
-        if( i != 21 && i != 22 )
+        if(periph_state[i] == 0)    //当前项是否经过测试
         {
-            flag &= periph_state[i];
+            flag ++;
         }
     }
 
-    if(flag == 1)      //所有检测通过
+    if(flag == 1)      //已经测玩所有项目
     {
-        ui->alltestslable->setStyleSheet("QLabel{background-color:rgb(0,255,0);}");
-        ui->alltestslable->setText("PASS");
-        FCT_CHECK[6] = 0x13;
 
-        serialCrc_Send(serial_mainboard,FCT_CHECK,11);
-        serialCrc_Send(serial_mainboard,FCT_CHECK,11);
-        serialCrc_Send(serial_mainboard,FCT_CHECK,11);
+        for(int i = 0; i <= 30; i++)
+        {
 
-        FCT_CHECK[6] = 0x12;
-        serialCrc_Send(serial_mainboard,FCT_CHECK,11);
-    }
-    else
-    {
-        ui->alltestslable->setStyleSheet("QLabel{background-color:rgb(255,0,0);}");
+            flag &= periph_state[i];
+
+        }
+
+        if(flag == 1)
+        {
+
+            ui->alltestslable->setStyleSheet("QLabel{background-color:rgb(0,255,0);}");
+            ui->alltestslable->setText("  PASS  ");
+            FCT_CHECK[6] = 0x13;
+            serialCrc_Send(serial_mainboard,FCT_CHECK,11);
+            serialCrc_Send(serial_mainboard,FCT_CHECK,11);
+            serialCrc_Send(serial_mainboard,FCT_CHECK,11);
+
+            FCT_CHECK[6] = 0x12;
+            serialCrc_Send(serial_mainboard,FCT_CHECK,11);
+
+            //更新表格
+        }
+        else
+        {
+            qDebug() << "ui->alltestslable->setText("");" ;
+            ui->alltestslable->setStyleSheet("QLabel{background-color:rgb(255,0,0);}");
+            ui->alltestslable->setText("   NG   ");
+        }
     }
 
     if(flag_version == 0)
@@ -337,14 +366,14 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
         flag_version = 1;
     }
 
-    if(mcu_state == 1 && start_mainboard == 7)
-    {
-        //断开3.3V供电,并开启主板15.5V电压
-        relaycontrol_all[7] = 0x01;
-        serialCrc_Send(serial_relay,relaycontrol_all,13);
-        mcu_state = 0;
+//    if(mcu_state == 1 && start_mainboard == 7)
+//    {
+//        //断开3.3V供电,并开启主板15.5V电压
+//        relaycontrol_all[7] = 0x01;
+//        serialCrc_Send(serial_relay,relaycontrol_all,13);
+//        mcu_state = 0;
 
-    }
+//    }
 
 
     if(start_mainboard == 6)
@@ -357,13 +386,21 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
     if(start_mainboard > 0)
         start_mainboard--;
 
-    if(mcu_state == 1 && start_mainboard == 0 && relaycontrol_all[7] != 0x01)
+    if( start_mainboard == 0 && relaycontrol_all[7] != 0x01)
     {
         qDebug() << "361";
         relaycontrol_all[7] = 0x01;    //断开继电器3，启动成功
         serialCrc_Send(serial_relay,relaycontrol_all,13);
 
     }
+
+//    if(mcu_state == 1 && start_mainboard == 0 && relaycontrol_all[7] != 0x01)
+//    {
+//        qDebug() << "361";
+//        relaycontrol_all[7] = 0x01;    //断开继电器3，启动成功
+//        serialCrc_Send(serial_relay,relaycontrol_all,13);
+
+//    }
 
     //判断扫地机的MCU和AP是否在线
     if(ap_state == 1 && mcu_state == 1)
@@ -543,14 +580,12 @@ void MainWindow::handleTimeout_1()      //发送读参数指令
 
         controlldsboard = 1;
 
+
         // 获取目标行的Item
         item = ui->tableWidget->item(24, 0); // 这里假设你要跳转到第一列的项
-
         // 滚动到目标项
         ui->tableWidget->scrollToItem(item, QAbstractItemView::PositionAtTop);
 
-        //return;
-        //m_pTimer_1->stop();     //关闭定时器
     }
 
     if(controlldsboard != 0 && controlldsboard < 8)    //继电器控制撞板
@@ -1620,9 +1655,9 @@ void MainWindow::on_resetpushbutton_clicked()
 
     ui->mcuversionlineEdit->setText("");
 
-    relaycontrol_all[7] = 0x00;
-    relaycontrol_all[8] = 0x00;
-    serialCrc_Send(serial_relay,relaycontrol_all,13);
+//    relaycontrol_all[7] = 0x00;
+//    relaycontrol_all[8] = 0x00;
+//    serialCrc_Send(serial_relay,relaycontrol_all,13);
 
 
 //    ui->fct1pushButton->setEnabled(false);
