@@ -87,6 +87,8 @@ void Dataarchiving::Myxlsx_config(QString configpath)
         QStringList values = line.split("，");
        // QString element = values.at(0);
         // 处理元素FXLT20220506836
+        if(values.size() != 3)
+            continue;
 
         xlsx.write(values.at(0)+"1" , values.at(1),format1);
     }
@@ -109,10 +111,12 @@ void Dataarchiving::MyxlsxWrite_parameter( QStringList &List, int num ,QString c
         QString line = in.readLine();    //逐行读取文件内容
         // 在这里添加解析逻辑，对每一行进行处理
         QStringList values = line.split("，");
-       // QString element = values.at(0);
+
+        if(values.size() != 3)
+            continue;
+
         // 处理元素
         xlsx.write(values.at(0)+QString::number(num) , List.at(i));
         i++;
     }
-
 }

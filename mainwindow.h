@@ -113,6 +113,8 @@ private slots:
 
 private:
 
+
+
     Ui::MainWindow *ui;
     QByteArray data;
     QByteArray frock_buff;
@@ -127,6 +129,8 @@ private:
     QTimer *m_pTimer_1;
     QTimer *m_pTimer_2;
     QTimer *m_pTimer_3; //发送读参指令
+
+    quint64 Fctsmt_NUM = 0;    //记录smt测试总数
 
     uint8_t serial_frock_flag = 0, serial_relay_flag = 0, serial_mainboard_flag = 0;
 
@@ -179,7 +183,7 @@ private:
                            ,0x44,0x44};
 
     //串口相关
-    int count_number = 0;//数组下标
+    int count_number = 0;   //主板串口接收数组下标
     quint8 head_num = 0;    //一帧中第一个数据下标
     quint8 tail_num = 0;    //一帧中末尾数据下标
     quint8 serial_head = 0;     //0，没找到头； 1，找到头。一帧数据处理完之后清零
@@ -223,13 +227,13 @@ private:
     uchar periph_state[40] = {0};   //1通过，2不通过
     uchar flag_err = 0;     //如果检测失败则重新检测（最多三次）
     uchar receive_succsee = 1;  //接收成功标志位
-    char start_mainboard = 0;
+    char start_mainboard = 0;   //启动主板
 
     quint8 mcu_state = 0;   //MCU状态标志位
     quint8 ap_state = 0;    //AP状态标志位
     quint8 apactivatedState = 0;    //AP激活状态
     quint8 mcuactivatedState = 0;   //mcu激活状态
-    uchar readmcu = 0,readfrock = 0,controlldsboard =0 ;
+    uchar readmcu = 0,readfrock = 0,controlldsboard =0 ;      //是否读完一个设备，读完1，未读完0
 
     quint16 down_look[3] = {1850,1850,1500};     //下视（左中右）阈值
     quint16 down_look_flag[6] = {0,0,0,0,0,0};
@@ -240,7 +244,7 @@ private:
     QString mcu_version_setext = "1.3.84";
     QString ap_version_setext = "1.3.66";
 
-    QString ap_uuid;
+    QString ap_uuid;        //存储ap的uuid
     QString peripvalue = 0;     //外设lineedit显示字符串
 
     //电机堵转电流范围标准
@@ -248,7 +252,8 @@ private:
     quint16 blockoff_elec[4] = {1500,700,500,500};
 
     //配置文件路径
-    QString Configfilepath = "D:/qt-progect/FCT_SMT/FCT_SMT_1218/config.txt";
+    QString Configfilepath = "D:/qt-progect/FCT_SMT/FCT_SMT_1221/config.txt";
+
     QStringList Testing_result = {"43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644"
                                   ,"43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644"
                                   ,"43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644","43644"

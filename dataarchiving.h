@@ -26,7 +26,7 @@ public:
     //写入机器各项功能测试的通过情况
     void MyxlsxWrite_State(const char * periph_state);
 
-    //写入机器各项功能的具体参数,
+    //写入机器各项功能的具体参数
     void MyxlsxWrite_parameter( QStringList &List, int num ,QString configpath);
 
     void Myxlsx_save();

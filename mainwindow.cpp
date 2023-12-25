@@ -56,6 +56,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    this->resize(1343,660) ;
     this->setWindowTitle("SMT-FCT上位机                                       非淡泊无以明志，非宁静无以致远");
 
     serial_mainboard = new QSerialPort;       //申请内存，并设置父对象
@@ -74,7 +75,7 @@ MainWindow::MainWindow(QWidget *parent)
     m_pTimer = new QTimer(this);
     connect(m_pTimer, SIGNAL(timeout()), this, SLOT(handleTimeout()));
 
-    //定时器2，讲所有要读的参数，遍历一遍
+    //定时器2，将所有要读的参数，遍历一遍
     m_pTimer_1 = new QTimer(this);
     connect(m_pTimer_1, SIGNAL(timeout()), this, SLOT(handleTimeout_1()));
 
@@ -115,10 +116,10 @@ MainWindow::MainWindow(QWidget *parent)
 
     qApp->installEventFilter(this);
 
-    Myxlsx.MyxlsxWrite_UUID("13616816816516516568468498496813513846841651089478978994651",10,true);
+
     Myxlsx.Myxlsx_config(Configfilepath);
-    Myxlsx.MyxlsxWrite_parameter(Testing_result,3,Configfilepath);
-    Myxlsx.MyxlsxWrite_parameter(Testing_result,5,Configfilepath);
+//    Myxlsx.MyxlsxWrite_parameter(Testing_result,3,Configfilepath);
+//    Myxlsx.MyxlsxWrite_parameter(Testing_result,5,Configfilepath);
     Myxlsx.Myxlsx_save();
 
 }
@@ -327,14 +328,11 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
 
         for(int i = 0; i <= 30; i++)
         {
-
-            flag &= periph_state[i];
-
+            flag &= periph_state[i];    //检测是否所有项目都通过
         }
 
         if(flag == 1)
         {
-
             ui->alltestslable->setStyleSheet("QLabel{background-color:rgb(0,255,0);}");
             ui->alltestslable->setText("  PASS  ");
             FCT_CHECK[6] = 0x13;
@@ -346,13 +344,63 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
             serialCrc_Send(serial_mainboard,FCT_CHECK,11);
 
             //更新表格
+            Myxlsx.MyxlsxWrite_UUID(ap_uuid,Fctsmt_NUM+1,true);
+            Myxlsx.MyxlsxWrite_parameter(Testing_result,Fctsmt_NUM+1,Configfilepath);
         }
         else
         {
             qDebug() << "ui->alltestslable->setText("");" ;
             ui->alltestslable->setStyleSheet("QLabel{background-color:rgb(255,0,0);}");
             ui->alltestslable->setText("   NG   ");
+
+            //更新表格
+            Myxlsx.MyxlsxWrite_UUID(ap_uuid,Fctsmt_NUM+1,false);
+            Myxlsx.MyxlsxWrite_parameter(Testing_result,Fctsmt_NUM+1,Configfilepath);
         }
+
+
+        //一块板子测试完成,清空测试结果数组，保存到excel
+        for(int i = 0; i < 40; i++)
+            periph_state[i] = 0;
+        Myxlsx.Myxlsx_save();
+
+        // 打开文件，以读写方式
+        QFile file(Configfilepath);
+        if (!file.open(QIODevice::ReadWrite | QIODevice::Text)) {
+            qDebug() << "Could not open file for reading and writing";
+            return ;
+        }
+
+        // 创建文本流对象
+        QTextStream stream(&file);
+
+        // 读取文件内容
+        QString content = stream.readAll();
+
+        // 找到要插入内容的位置（这里是在文件中间位置）
+        int modifyPosition  = content.indexOf(QString::number(Fctsmt_NUM));
+
+        // 如果找到了要修改的位置
+        if (modifyPosition != -1) {
+            // 修改内容（这里是将 "World" 替换为 "Modified"）
+            content.replace(modifyPosition, QString::number(Fctsmt_NUM+1).length(), QString::number(Fctsmt_NUM+1)+'\n');
+
+            // 移动文件指针到文件开始
+            file.seek(0);
+
+            // 清空文件内容
+            file.resize(0);
+
+            // 将修改后的内容写回文件
+            stream << content;
+
+            qDebug() << "File partially modified successfully";
+        } else {
+            qDebug() << "Content to modify not found in the file";
+        }
+
+        // 关闭文件
+        file.close();
     }
 
     if(flag_version == 0)
@@ -399,7 +447,6 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
 //        qDebug() << "361";
 //        relaycontrol_all[7] = 0x01;    //断开继电器3，启动成功
 //        serialCrc_Send(serial_relay,relaycontrol_all,13);
-
 //    }
 
     //判断扫地机的MCU和AP是否在线
@@ -1175,7 +1222,7 @@ void MainWindow::MaincontrolDataReceived()
 
                             break;
 
-                        case 0x68:
+                        case 0x68:  //uuid
 
                             for(k = head_num+4; k <= head_num+4+20; k++)
                             {
@@ -1673,8 +1720,6 @@ void MainWindow::on_periphpushbutton_clicked()
 }
 
 
-
-
 //定时器更新
 void MainWindow::updata_UI()
 {
@@ -1758,16 +1803,14 @@ void MainWindow::Table_init()
     ui->tableWidget->setColumnWidth(2, 190);  // 设置第一列宽度为150
     ui->tableWidget->setColumnWidth(3, 190);  // 设置第一列宽度为150
     ui->tableWidget->setColumnWidth(4, 175);  // 设置第一列宽度为150
-   // ui->tableWidget->item(1,2 )->setBackground(QColor(255,0,0));    //设置单元格背景
+    // ui->tableWidget->item(1,2 )->setBackground(QColor(255,0,0));    //设置单元格背景
     // ui->tableWidget->setStyleSheet("background-color: lightgray;");
     //    for (int col = 0; col < ui->tableWidget->columnCount(); ++col) {
-
     //        QTableWidgetItem *item = ui->tableWidget->item(targetRow,col );
     //        qDebug() << "col" << col;
     //            //item->setBackground(Qt::red);
     //            item ->setBackground(QColor(255,0,0));
     //    }
-
     //让tableWidget内容中的每个元素居中
     for (int i=0;i<32;i++)
     {
@@ -1787,7 +1830,7 @@ void MainWindow::ReadConfigFile()
         return;
     }
 
-     //创建QTextStream对象，并绑定到文件
+    //创建QTextStream对象，并绑定到文件
     QTextStream Qstream(&configpath);
 
     int i = 0;
@@ -1795,15 +1838,40 @@ void MainWindow::ReadConfigFile()
     while (!Qstream.atEnd())
     {
         QString line = Qstream.readLine();    //逐行读取文件内容
+
         // 在这里添加解析逻辑，对每一行进行处理
-        QStringList values = line.split("，");
-        //Myxlsx.
-        for (int j = 1; j < values.size(); ++j) {
-            QString element = values.at(j);
-            // 处理元素
-            ui->tableWidget->setItem(i,(j==1?1:3),new QTableWidgetItem(element));
-            ui->tableWidget->item(i,(j==1?1:3))->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+
+        if(i == 0)  //处理第一行数据，读出fct测试总数
+        {
+            QStringList values = line.split(":");
+
+            Fctsmt_NUM = values.at(1).toLongLong();     //读取当前的测试总数
+
         }
+        else
+        {
+            QStringList values1 = line.split("，");
+
+            if (values1.size() != 3) {
+                qDebug() << "第 " << i << " 行元素数量不符合预期：" << line << " 实际数量：" << values1.size();
+            }
+            if (!values1.isEmpty() && values1.size() == 3)
+            {
+
+                    for (int j = 1; j < values1.size(); j++)
+                    {
+
+                        QString element = values1.at(j);
+
+                        // 处理元素
+                        ui->tableWidget->setItem(i-1,(j==1?1:3),new QTableWidgetItem(element));
+                        ui->tableWidget->item(i-1,(j==1?1:3))->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+
+                    }
+            }
+
+        }
+
         i++;
     }
 
@@ -1817,13 +1885,5 @@ void MainWindow::on_OpenSerialButton_2_clicked()
     serialCrc_Send(serial_relay,relaycontrol_all,13);
 
 
-    //int targetRow = 4; // 要跳转到的行，索引从0开始
-
-
-//    ui->tableWidget->setVerticalScrollMode(QAbstractItemView::ScrollMode::ScrollPerPixel);
-//    ui->tableWidget->verticalScrollBar()->setSingleStep(2);
-//    ui->tableWidget->verticalScrollBar()->setSliderPosition(10*30);//跳转行到指定位置
-//    ui->tableWidget->viewport()->installEventFilter(this);//对此对象安装事件过滤器
-//    ui->tableWidget->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);//设置滚动模式按照像素滑动，做表格滑动时使用
 }
 
