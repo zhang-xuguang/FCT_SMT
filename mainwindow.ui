@@ -238,7 +238,7 @@
      <string>FCT通过数量</string>
     </property>
    </widget>
-   <widget class="QLineEdit" name="updatefrelineEdit_3">
+   <widget class="QLineEdit" name="fctpasslineEdit">
     <property name="geometry">
      <rect>
       <x>360</x>
@@ -501,7 +501,7 @@
      <string/>
     </property>
    </widget>
-   <widget class="QLineEdit" name="updatefrelineEdit_2">
+   <widget class="QLineEdit" name="fctsumlineEdit">
     <property name="geometry">
      <rect>
       <x>360</x>

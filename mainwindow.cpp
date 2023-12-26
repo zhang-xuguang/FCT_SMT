@@ -122,6 +122,7 @@ MainWindow::MainWindow(QWidget *parent)
 //    Myxlsx.MyxlsxWrite_parameter(Testing_result,5,Configfilepath);
     Myxlsx.Myxlsx_save();
 
+
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *event)
@@ -129,7 +130,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
     // 捕获键盘事件
     scannedData += event->text();
 
-    if(event->text() == "\r")
+    if(event->text() == '\r')
     {
         if(scannedData != ui->shapcodelineedit->text()) //检测到扫码枪内容更新
         {
@@ -137,11 +138,12 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
             relaycontrol_all[7] = 0x01;
             serialCrc_Send(serial_relay,relaycontrol_all,13);
             start_mainboard = 7;    //设置定时器倒计时时间
-
         }
         // 在LineEdit中显示扫描到的数据
         ui->shapcodelineedit->setText(scannedData);
+        QR_code = scannedData;
         scannedData.clear();
+
     }
 
 }
@@ -325,7 +327,7 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
 
     if(flag == 1)      //已经测玩所有项目
     {
-
+        Fctsmt_NUM++;
         for(int i = 0; i <= 30; i++)
         {
             flag &= periph_state[i];    //检测是否所有项目都通过
@@ -333,6 +335,7 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
 
         if(flag == 1)
         {
+            Fctsmt_pass++;
             ui->alltestslable->setStyleSheet("QLabel{background-color:rgb(0,255,0);}");
             ui->alltestslable->setText("  PASS  ");
             FCT_CHECK[6] = 0x13;
@@ -344,8 +347,12 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
             serialCrc_Send(serial_mainboard,FCT_CHECK,11);
 
             //更新表格
-            Myxlsx.MyxlsxWrite_UUID(ap_uuid,Fctsmt_NUM+1,true);
-            Myxlsx.MyxlsxWrite_parameter(Testing_result,Fctsmt_NUM+1,Configfilepath);
+            Myxlsx.MyxlsxWrite_QR_code(QR_code,Fctsmt_NUM,true);
+            Myxlsx.MyxlsxWrite_parameter(Testing_result,Fctsmt_NUM,Configfilepath);
+
+            ChangeFctPass_File();
+            ui->fctpasslineEdit->setText(QString::number(Fctsmt_pass));
+
         }
         else
         {
@@ -354,8 +361,9 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
             ui->alltestslable->setText("   NG   ");
 
             //更新表格
-            Myxlsx.MyxlsxWrite_UUID(ap_uuid,Fctsmt_NUM+1,false);
-            Myxlsx.MyxlsxWrite_parameter(Testing_result,Fctsmt_NUM+1,Configfilepath);
+            Myxlsx.MyxlsxWrite_QR_code(QR_code,Fctsmt_NUM,false);
+            Myxlsx.MyxlsxWrite_parameter(Testing_result,Fctsmt_NUM,Configfilepath);
+
         }
 
 
@@ -364,43 +372,10 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
             periph_state[i] = 0;
         Myxlsx.Myxlsx_save();
 
-        // 打开文件，以读写方式
-        QFile file(Configfilepath);
-        if (!file.open(QIODevice::ReadWrite | QIODevice::Text)) {
-            qDebug() << "Could not open file for reading and writing";
-            return ;
-        }
+        //更新配置文件里面的计数
+        ChangeFctNum_File();
+        ui->fctsumlineEdit->setText(QString::number(Fctsmt_NUM));
 
-        // 创建文本流对象
-        QTextStream stream(&file);
-
-        // 读取文件内容
-        QString content = stream.readAll();
-
-        // 找到要插入内容的位置（这里是在文件中间位置）
-        int modifyPosition  = content.indexOf(QString::number(Fctsmt_NUM));
-
-        // 如果找到了要修改的位置
-        if (modifyPosition != -1) {
-            // 修改内容（这里是将 "World" 替换为 "Modified"）
-            content.replace(modifyPosition, QString::number(Fctsmt_NUM+1).length(), QString::number(Fctsmt_NUM+1)+'\n');
-
-            // 移动文件指针到文件开始
-            file.seek(0);
-
-            // 清空文件内容
-            file.resize(0);
-
-            // 将修改后的内容写回文件
-            stream << content;
-
-            qDebug() << "File partially modified successfully";
-        } else {
-            qDebug() << "Content to modify not found in the file";
-        }
-
-        // 关闭文件
-        file.close();
     }
 
     if(flag_version == 0)
@@ -1838,15 +1813,25 @@ void MainWindow::ReadConfigFile()
     while (!Qstream.atEnd())
     {
         QString line = Qstream.readLine();    //逐行读取文件内容
+        //qDebug() << "line" << line;
 
         // 在这里添加解析逻辑，对每一行进行处理
 
         if(i == 0)  //处理第一行数据，读出fct测试总数
         {
-            QStringList values = line.split(":");
 
+            QStringList values = line.split(":");
             Fctsmt_NUM = values.at(1).toLongLong();     //读取当前的测试总数
 
+            ui->fctsumlineEdit->setText(values.at(1));
+
+
+        }
+        else if(i == 1)
+        {
+            QStringList values = line.split(":");
+            Fctsmt_pass = values.at(1).toLongLong();
+            ui->fctpasslineEdit->setText(values.at(1));
         }
         else
         {
@@ -1864,8 +1849,8 @@ void MainWindow::ReadConfigFile()
                         QString element = values1.at(j);
 
                         // 处理元素
-                        ui->tableWidget->setItem(i-1,(j==1?1:3),new QTableWidgetItem(element));
-                        ui->tableWidget->item(i-1,(j==1?1:3))->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
+                        ui->tableWidget->setItem(i-2,(j==1?1:3),new QTableWidgetItem(element));
+                        ui->tableWidget->item(i-2,(j==1?1:3))->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
 
                     }
             }
@@ -1884,6 +1869,96 @@ void MainWindow::on_OpenSerialButton_2_clicked()
     relaycontrol_all[7] = 0x09;    //闭合继电器4，启动成功
     serialCrc_Send(serial_relay,relaycontrol_all,13);
 
+
+}
+
+
+
+void MainWindow::ChangeFctNum_File()
+{
+    // 打开文件，以读写方式
+    QFile file(Configfilepath);
+    if (!file.open(QIODevice::ReadWrite | QIODevice::Text)) {
+        qDebug() << "Could not open file for reading and writing";
+        return ;
+    }
+
+    // 创建文本流对象
+    QTextStream stream(&file);
+
+    // 读取文件内容
+    QString content = stream.readAll();
+
+    // 在此处你可以对找到的目标行进行处理
+    content.replace(12, QString::number(Fctsmt_NUM).length()+1, QString::number(Fctsmt_NUM)+'\n');
+
+
+    // 移动文件指针到文件开始
+    file.seek(0);
+
+    // 清空文件内容
+    file.resize(0);
+
+    // 将修改后的内容写回文件
+    stream << content;
+
+    // 关闭文件
+    file.close();
+
+}
+
+
+void MainWindow::ChangeFctPass_File()
+{
+    // 打开文件，以读写方式
+    QFile file(Configfilepath);
+    if (!file.open(QIODevice::ReadWrite | QIODevice::Text)) {
+        qDebug() << "Could not open file for reading and writing";
+        return ;
+    }
+
+
+    // 创建文本流对象
+    QTextStream stream(&file);
+
+
+    // 目标行号（从0开始计数）
+    int targetLineNumber = 1; // 例如，将光标移动到文件的第6行开始
+
+    // 记录每一行的起始位置
+    QList<qint64> lineStartPositions;
+
+    qint64 currentPosition = 0;
+    while (!stream.atEnd()) {
+        currentPosition = stream.pos(); // 记录当前位置，即下一行的起始位置
+        lineStartPositions.append(currentPosition);
+    }
+
+    // 将文件位置（索引）移动到文件的开始位置
+    if (!file.seek(0)) {
+        qDebug() << "Failed to seek to the beginning of the file";
+        file.close();
+        return ;
+    }
+
+    // 读取文件内容
+    QString content = stream.readAll();
+    qDebug() << "content" << content;
+
+    qDebug()  << "lineStartPositions[1]" << lineStartPositions[0];
+    // 在此处你可以对找到的目标行进行处理
+    content.replace(lineStartPositions[1]+15, QString::number(Fctsmt_pass).length()+1, QString::number(Fctsmt_pass)+'\n');
+
+    // 移动文件指针到文件开始
+    file.seek(0);
+
+    // 清空文件内容
+    file.resize(0);
+
+    // 将修改后的内容写回文件
+    stream << content;
+
+    file.close();
 
 }
 

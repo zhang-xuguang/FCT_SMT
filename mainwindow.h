@@ -81,6 +81,9 @@ public:
 
     void oneTestresule(bool result, int row);       //将某一项的检测结果写入界面(table widget)
 
+    void ChangeFctNum_File();        //修改配置文件中的FCT总数
+    void ChangeFctPass_File();      //修改配置文件中fct的通过总数
+
 
     //全局串口对象
     QSerialPort *serial_mainboard;  //连接主板串口
@@ -119,7 +122,7 @@ private:
     QByteArray data;
     QByteArray frock_buff;
     QByteArray relay_buff;
-    QString saomaqiang;
+    QString QR_code;
     int frame_serial = 0;
     int F1_code = 2;    //读参指令代码
     int serial_state_check = 0;
@@ -131,6 +134,7 @@ private:
     QTimer *m_pTimer_3; //发送读参指令
 
     quint64 Fctsmt_NUM = 0;    //记录smt测试总数
+    quint64 Fctsmt_pass = 0;    //记录smt成功总数
 
     uint8_t serial_frock_flag = 0, serial_relay_flag = 0, serial_mainboard_flag = 0;
 

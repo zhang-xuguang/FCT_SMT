@@ -12,39 +12,17 @@ Dataarchiving::Dataarchiving(QWidget *parent)
     : QMainWindow{parent}
 {
 
-//    QXlsx::Format format1;
-//    format1.setHorizontalAlignment(QXlsx::Format::AlignHCenter);/*横向居中*/
-
-   // //    xlsx.write(1, 2, "Hello Qt!");
-//    xlsx.write(2, 2, QStringLiteral("中文"));
-//    //xlsx.saveAs("Text.xlsx");
-
-  //  QXlsx::Format format1;
-
-    //format1.setFontColor(QColor(Qt::red));   //文字为红色
-   // format1.setPatternBackgroundColor(QColor("#00B050"));  //背景颜色
-
-    //format1.setPatternForegroundColor(Qt::red);
-   // format1.setFontSize(30);  // 设置字体大小
-//    format1.setHorizontalAlignment(QXlsx::Format::AlignHCenter);  //横向居中
-//   // format1.setBorderStyle(QXlsx::Format::BorderDashDotDot);  //边框样式
-    //xlsx.write("A2", "Hello Qt!", format1);//写入文字，按照刚才设置的样式
-//    xlsx.write(2, 1, 12345, format1);//写入文字，按照刚才设置的样式
-
-//    xlsx.write("A3","12345");
-//    //第2行第1列
-//    xlsx.saveAs("Text.xlsx");
 }
 
-
-void Dataarchiving::MyxlsxWrite_UUID( QString uuid, quint64 Fctnum ,bool state )
+//写入序号，uuid，检测结果
+void Dataarchiving::MyxlsxWrite_QR_code( QString QR_code, quint64 Fctnum ,bool state )
 {
-    QString temp = "A"+QString::number(Fctnum + 1);
-    QString temp1 = "B"+QString::number(Fctnum + 1);
+    QString temp = "A"+QString::number(Fctnum +1);
+    QString temp1 = "B"+QString::number(Fctnum +1);
     QString temp2 = "C" + QString::number(Fctnum+1);
 
     xlsx.write(temp, Fctnum);
-    xlsx.write(temp1, uuid);
+    xlsx.write(temp1, QR_code);
     if(state)
         xlsx.write(temp2, "PASS");
     else
@@ -55,7 +33,8 @@ void Dataarchiving::MyxlsxWrite_UUID( QString uuid, quint64 Fctnum ,bool state )
 
 void Dataarchiving::Myxlsx_save()
 {
-    xlsx.saveAs("Text1.xlsx");
+
+    xlsx.saveAs("../FCT_SMT_1221/Test.xlsx");
 }
 
 
@@ -76,7 +55,7 @@ void Dataarchiving::Myxlsx_config(QString configpath)
     QTextStream in(&configfile);
 
     xlsx.write("A1" , "序号");
-    xlsx.write("B1" , "UUID");
+    xlsx.write("B1" , "二维码");
     xlsx.write("C1" , "检测结果",format1);
 
     // 读取文件内容并解析
@@ -116,7 +95,7 @@ void Dataarchiving::MyxlsxWrite_parameter( QStringList &List, int num ,QString c
             continue;
 
         // 处理元素
-        xlsx.write(values.at(0)+QString::number(num) , List.at(i));
+        xlsx.write(values.at(0)+QString::number(num+1) , List.at(i));
         i++;
     }
 }

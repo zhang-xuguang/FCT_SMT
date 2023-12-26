@@ -22,6 +22,7 @@ FORMS += \
 
 QT += serialport
 
+
 include(src/xlsx/qtxlsx.pri)
 
 # Default rules for deployment.
