@@ -34,8 +34,10 @@
 #include <QEvent>
 #include <QKeyEvent>
 #include <QDebug>
-
+#include <cstdlib>  // 包含头文件以使用 atexit 函数
 #include "dataarchiving.h"
+
+
 
 #define TIMER_TIMEOUT   (500)
 #define TIMER_TIMEOUT_1   (300)
@@ -48,6 +50,9 @@
 4、水泵，电流0
 
 */
+
+
+
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -100,7 +105,6 @@ MainWindow::MainWindow(QWidget *parent)
     ui->serialrelaylable->setFrameShape (QFrame::Box);
 
 
-
     //设置版本号
     ui->mcuversionlineEdit_2->setText(mcu_version_setext);
     ui->apversionlineEdit_2->setText(ap_version_setext);
@@ -118,12 +122,10 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     Myxlsx.Myxlsx_config(Configfilepath);
-//    Myxlsx.MyxlsxWrite_parameter(Testing_result,3,Configfilepath);
-//    Myxlsx.MyxlsxWrite_parameter(Testing_result,5,Configfilepath);
-    Myxlsx.Myxlsx_save();
-
 
 }
+
+
 
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
@@ -145,7 +147,6 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         scannedData.clear();
 
     }
-
 }
 
 
@@ -287,7 +288,6 @@ void MainWindow::serialCheckHandleTimeout()
             }
 
         }
-
         return ;
     }
 
@@ -327,6 +327,7 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
 
     if(flag == 1)      //已经测玩所有项目
     {
+        qDebug() << "flag == 1";
         Fctsmt_NUM++;
         for(int i = 0; i <= 30; i++)
         {
@@ -346,13 +347,11 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
             FCT_CHECK[6] = 0x12;
             serialCrc_Send(serial_mainboard,FCT_CHECK,11);
 
-            //更新表格
-            Myxlsx.MyxlsxWrite_QR_code(QR_code,Fctsmt_NUM,true);
-            Myxlsx.MyxlsxWrite_parameter(Testing_result,Fctsmt_NUM,Configfilepath);
+            //更新表格  ,Fctsmt_NUM+1  的原因是excel行从第二行开始存数据
+            Myxlsx.MyxlsxWrite_parameter(Fctsmt_NUM+1,QR_code,true,Testing_result);
 
             ChangeFctPass_File();
             ui->fctpasslineEdit->setText(QString::number(Fctsmt_pass));
-
         }
         else
         {
@@ -361,16 +360,12 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
             ui->alltestslable->setText("   NG   ");
 
             //更新表格
-            Myxlsx.MyxlsxWrite_QR_code(QR_code,Fctsmt_NUM,false);
-            Myxlsx.MyxlsxWrite_parameter(Testing_result,Fctsmt_NUM,Configfilepath);
-
+            Myxlsx.MyxlsxWrite_parameter(Fctsmt_NUM+1,QR_code,false,Testing_result);
         }
-
 
         //一块板子测试完成,清空测试结果数组，保存到excel
         for(int i = 0; i < 40; i++)
             periph_state[i] = 0;
-        Myxlsx.Myxlsx_save();
 
         //更新配置文件里面的计数
         ChangeFctNum_File();
@@ -561,11 +556,15 @@ void MainWindow::handleTimeout_1()      //发送读参数指令
             oneTestresule(true,21);
 
         }
-        else
+        else if(periph_state[21] == 2)
         {
             ui->tableWidget->setItem(21,2,new QTableWidgetItem("0"));
             ui->tableWidget->item(21,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
             oneTestresule(false,21);
+        }
+        else
+        {
+
         }
 
         //将LDS模组和wifi模组的状态写入表格
@@ -577,11 +576,15 @@ void MainWindow::handleTimeout_1()      //发送读参数指令
             oneTestresule(true,22);
 
         }
-        else
+        else if(periph_state[22] == 2)
         {
             ui->tableWidget->setItem(22,2,new QTableWidgetItem("0"));
             ui->tableWidget->item(22,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
             oneTestresule(false,22);
+        }
+        else
+        {
+
         }
 
         //将LDS模组和wifi模组的状态写入表格
@@ -593,11 +596,15 @@ void MainWindow::handleTimeout_1()      //发送读参数指令
             oneTestresule(true,23);
 
         }
-        else
+        else if(periph_state[23] == 2)
         {
             ui->tableWidget->setItem(23,2,new QTableWidgetItem("0"));
             ui->tableWidget->item(23,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
             oneTestresule(false,23);
+        }
+        else
+        {
+
         }
 
         controlldsboard = 1;
@@ -612,8 +619,6 @@ void MainWindow::handleTimeout_1()      //发送读参数指令
 
     if(controlldsboard != 0 && controlldsboard < 8)    //继电器控制撞板
     {
-
-
         if(controlldsboard == 2)
         {
             qDebug() << "534";
@@ -1564,8 +1569,6 @@ void MainWindow::oneTestresule(bool result, int row)
 MainWindow::~MainWindow()
 {
 
-
-
     delete ui;
 }
 
@@ -1789,7 +1792,28 @@ void MainWindow::Table_init()
     //让tableWidget内容中的每个元素居中
     for (int i=0;i<32;i++)
     {
-        ui->tableWidget->item(i,0)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //单元格必须有内容
+        if(ui->tableWidget->item(i,0) != NULL)
+            ui->tableWidget->item(i,0)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //单元格必须有内容
+    }
+
+}
+
+void MainWindow::Table_reset()
+{
+    for(int i = 0; i < 32; i++)
+    {
+        for(int a = 0; a < 5; a++)
+        {
+            if(ui->tableWidget->item(i,a) != NULL)  //先判断单元格是否为空
+            {
+                ui->tableWidget->item(i,a)->setBackground(QColor(0,0,0,0)); //设置为透明模式
+                if(a == 2 || a == 4)        //清楚指定单元格的内容
+                {
+                    ui->tableWidget->item(i,a)->setText("");
+                }
+
+            }
+        }
     }
 
 }
@@ -1865,10 +1889,7 @@ void MainWindow::ReadConfigFile()
 
 void MainWindow::on_OpenSerialButton_2_clicked()
 {
-
-    relaycontrol_all[7] = 0x09;    //闭合继电器4，启动成功
-    serialCrc_Send(serial_relay,relaycontrol_all,13);
-
+    Table_reset();
 
 }
 
@@ -1892,7 +1913,6 @@ void MainWindow::ChangeFctNum_File()
     // 在此处你可以对找到的目标行进行处理
     content.replace(12, QString::number(Fctsmt_NUM).length()+1, QString::number(Fctsmt_NUM)+'\n');
 
-
     // 移动文件指针到文件开始
     file.seek(0);
 
@@ -1904,7 +1924,6 @@ void MainWindow::ChangeFctNum_File()
 
     // 关闭文件
     file.close();
-
 }
 
 
@@ -1917,10 +1936,8 @@ void MainWindow::ChangeFctPass_File()
         return ;
     }
 
-
     // 创建文本流对象
     QTextStream stream(&file);
-
 
     // 目标行号（从0开始计数）
     int targetLineNumber = 1; // 例如，将光标移动到文件的第6行开始

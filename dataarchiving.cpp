@@ -6,6 +6,9 @@
 #include <QtCore/QFile>
 #include <QtCore/QIODevice>
 
+#include <QAxObject>
+#include <QDir>
+
 
 
 Dataarchiving::Dataarchiving(QWidget *parent)
@@ -15,30 +18,16 @@ Dataarchiving::Dataarchiving(QWidget *parent)
 }
 
 //写入序号，uuid，检测结果
-void Dataarchiving::MyxlsxWrite_QR_code( QString QR_code, quint64 Fctnum ,bool state )
-{
-    QString temp = "A"+QString::number(Fctnum +1);
-    QString temp1 = "B"+QString::number(Fctnum +1);
-    QString temp2 = "C" + QString::number(Fctnum+1);
-
-    xlsx.write(temp, Fctnum);
-    xlsx.write(temp1, QR_code);
-    if(state)
-        xlsx.write(temp2, "PASS");
-    else
-        xlsx.write(temp2, "NG");
-}
 
 
 
 void Dataarchiving::Myxlsx_save()
 {
 
-    xlsx.saveAs("../FCT_SMT_1221/Test.xlsx");
 }
 
 
-void Dataarchiving::Myxlsx_config(QString configpath)
+void Dataarchiving::Myxlsx_config( QString configpath)
 {
 
     QFile configfile(configpath);
@@ -48,54 +37,143 @@ void Dataarchiving::Myxlsx_config(QString configpath)
         return;
     }
 
+    // 创建一个Excel对象
+    QAxObject *excel = new QAxObject("Excel.Application", nullptr);
+    if (!excel->isNull()) {
+        excel->setProperty("Visible", false);  // 设置Excel应用程序不可见
 
-    QXlsx::Format format1;
-    format1.setHorizontalAlignment(QXlsx::Format::AlignHCenter);/*横向居中*/
+        // 获取Workbooks对象
+        QAxObject *workbooks = excel->querySubObject("Workbooks");
+        if (!workbooks->isNull()) {
+            // 打开Excel文件
+            QAxObject *workbook = workbooks->querySubObject("Open(const QString&)", filePath);
+            if (!workbook->isNull()) {
+                // 获取第一个工作表
+                QAxObject *worksheet = workbook->querySubObject("Worksheets(int)", 1);
+                if (!worksheet->isNull()) {
 
-    QTextStream in(&configfile);
+                    // 设置新的值
+                    worksheet->querySubObject("Cells(int,int)", 1, 1)->setProperty("Value", "序号");
+                    worksheet->querySubObject("Cells(int,int)", 1, 2)->setProperty("Value", "二维码");
+                    worksheet->querySubObject("Cells(int,int)", 1, 3)->setProperty("Value", "检测结果");
 
-    xlsx.write("A1" , "序号");
-    xlsx.write("B1" , "二维码");
-    xlsx.write("C1" , "检测结果",format1);
 
-    // 读取文件内容并解析
-    while (!in.atEnd())
-    {
-        QString line = in.readLine();    //逐行读取文件内容
-        // 在这里添加解析逻辑，对每一行进行处理
-        QStringList values = line.split("，");
-       // QString element = values.at(0);
-        // 处理元素FXLT20220506836
-        if(values.size() != 3)
-            continue;
+                    QTextStream in(&configfile);
+                    int i = 4;
+                    // 读取文件内容并解析
+                    while (!in.atEnd())
+                    {
 
-        xlsx.write(values.at(0)+"1" , values.at(1),format1);
+                        QString line = in.readLine();    //逐行读取文件内容
+                        // 在这里添加解析逻辑，对每一行进行处理
+                        QStringList values = line.split("，");
+                       // QString element = values.at(0);
+                        // 处理元素FXLT20220506836
+                        if(values.size() != 3)
+                            continue;
+                        worksheet->querySubObject("Cells(int,int)", 1, i)->setProperty("Value", values.at(1));
+                        i++;
+//                        xlsx.write(values.at(0)+"1" , values.at(1),format1);
+                    }
+
+                    // 保存并关闭工作簿
+                    workbook->dynamicCall("Save()");
+                    workbook->dynamicCall("Close()");
+                } else {
+                    qDebug() << "Failed to get cell for update";
+                }
+
+                // 释放工作簿对象
+                delete workbook;
+            }
+            else {
+                qDebug() << "Failed to get the first worksheet";
+            }
+
+
+            // 释放工作簿集合对象
+            delete workbooks;
+
+        }
+        else {
+            qDebug() << "Failed to open workbook:" << filePath;
+        }
+
+        // 退出Excel应用程序
+        excel->dynamicCall("Quit()");
+
+        // 释放Excel对象
+        delete excel;
+
     }
+    else {
+        qDebug() << "Failed to create Excel application object";
+    }
+
 }
 
-void Dataarchiving::MyxlsxWrite_parameter( QStringList &List, int num ,QString configpath)
+void Dataarchiving::MyxlsxWrite_parameter(int Fctnum , QString QR_code, bool state, QStringList &List)
 {
-    QFile configfile(configpath);
-    if( !configfile.open(QIODevice::ReadOnly | QIODevice::Text) )
-    {
-        qDebug() << "配置文件打开失败！请检测配置文件";
-        return;
+
+    // 创建一个Excel对象
+    QAxObject *excel = new QAxObject("Excel.Application", nullptr);
+    if (!excel->isNull()) {
+        excel->setProperty("Visible", false);           //设置Excel应用程序不可见
+
+        // 获取Workbooks对象
+        QAxObject *workbooks = excel->querySubObject("Workbooks");
+        if (!workbooks->isNull()) {
+            // 打开Excel文件
+            QAxObject *workbook = workbooks->querySubObject("Open(const QString&)", filePath);
+            if (!workbook->isNull()) {
+                // 获取第一个工作表
+                QAxObject *worksheet = workbook->querySubObject("Worksheets(int)", 1);
+                if (!worksheet->isNull()) {
+                    // 设置新的值
+                    worksheet->querySubObject("Cells(int,int)", Fctnum, 1)->setProperty("Value", QString::number(Fctnum-1));
+                    worksheet->querySubObject("Cells(int,int)", Fctnum, 2)->setProperty("Value", QR_code);
+                    if(state)
+                        worksheet->querySubObject("Cells(int,int)", Fctnum, 3)->setProperty("Value", "PASS");
+                    else
+                        worksheet->querySubObject("Cells(int,int)", Fctnum, 3)->setProperty("Value", "NG");
+
+                    for(int i = 0 ; i < List.size(); i++)
+                    {
+                        worksheet->querySubObject("Cells(int,int)", Fctnum, i+4)->setProperty("Value", List.at(i));
+                    }
+
+                    // 保存并关闭工作簿
+                    workbook->dynamicCall("Save()");
+                    workbook->dynamicCall("Close()");
+                } else {
+                    qDebug() << "Failed to get cell for update";
+                }
+
+                // 释放工作簿对象
+                delete workbook;
+            }
+            else {
+                qDebug() << "Failed to get the first worksheet";
+            }
+
+
+            // 释放工作簿集合对象
+            delete workbooks;
+
+        }
+        else {
+            qDebug() << "Failed to open workbook:" << filePath;
+        }
+
+        // 退出Excel应用程序
+        excel->dynamicCall("Quit()");
+
+        // 释放Excel对象
+        delete excel;
+
     }
-    QTextStream in(&configfile);
-
-    int i = 0;
-    // 读取文件内容并解析
-    while (!in.atEnd())
-    {
-        QString line = in.readLine();    //逐行读取文件内容
-        // 在这里添加解析逻辑，对每一行进行处理
-        QStringList values = line.split("，");
-
-        if(values.size() != 3)
-            continue;
-
-        // 处理元素
-        xlsx.write(values.at(0)+QString::number(num+1) , List.at(i));
-        i++;
+    else {
+        qDebug() << "Failed to create Excel application object";
     }
+
 }

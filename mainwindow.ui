@@ -462,7 +462,7 @@
      </font>
     </property>
     <property name="text">
-     <string>设置</string>
+     <string>TEST</string>
     </property>
    </widget>
    <widget class="QPushButton" name="resetpushbutton">
