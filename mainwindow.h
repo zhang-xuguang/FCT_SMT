@@ -9,6 +9,7 @@
 #include <QWidget>
 #include <QLineEdit>
 #include <QKeyEvent>
+#include <vector>
 
 
 
@@ -120,11 +121,10 @@ private:
     QByteArray frock_buff;
     QByteArray relay_buff;
     QString QR_code;
-    int frame_serial = 0;
+    int frame_serial = 0;   //记录一帧数据的帧头位置
     int F1_code = 2;    //读参指令代码
-    int serial_state_check = 0;
-    char send_data[10] = {0};
-    int flag_version = 0;
+    int serial_state_check = 0;     //检测主板是否连接
+    int flag_version = 0;       //检测软件版本，在定时器1中断函数中运行
     QTimer *m_pTimer;
     QTimer *m_pTimer_1;
     QTimer *m_pTimer_2;
@@ -133,6 +133,10 @@ private:
     quint64 Fctsmt_NUM = 0;    //记录smt测试总数
     quint64 Fctsmt_pass = 0;    //记录smt成功总数
 
+    quint8 Pcbfct_start = 0;    //启动pcbfct标志位
+    quint8 Fctsmt_start = 0;    //开始fct测试标志位
+
+    //判断三个串口设备是否连接
     uint8_t serial_frock_flag = 0, serial_relay_flag = 0, serial_mainboard_flag = 0;
 
     quint8 ReadReference[10] = {
@@ -161,6 +165,15 @@ private:
         0x4E,0x47       //截止位+
     };
 
+    quint8 FCT_Control[11] = {
+        0x54,0x41,      //帧头
+        0x00,0x03,      //正文长度
+        0xF2,0x01,      //指令
+        0x11,//正文内容
+        0x00,0x00,      //CRC高低位
+        0x4E,0x47       //截止位+
+    };
+
     quint8 UPDATE_FRE[12] ={
         0x54,0x41,      //帧头
         0x00,0x04,      //正文长度
@@ -179,9 +192,7 @@ private:
                                    0xC4,0xCC};
     quint8 relayRead[8] = {0x01,0x01,0x00,0x00,0x00,0x20,0x3D,0xD2};
 
-
-    quint8 frock_all[8] = {0x01,0x03,0x00,0x00,0x00,0x10
-                           ,0x44,0x44};
+    quint8 frock_all[8] = {0x01,0x03,0x00,0x00,0x00,0x10,0x44,0x44};
 
     //串口相关
     int count_number = 0;   //主板串口接收数组下标
@@ -189,9 +200,11 @@ private:
     quint8 tail_num = 0;    //一帧中末尾数据下标
     quint8 serial_head = 0;     //0，没找到头； 1，找到头。一帧数据处理完之后清零
     quint8 serial_tail = 0;
-    uchar Read_data[5000] = {0};     //主板串口接收缓存区
-    uchar Frock_Read_data[5000] = {0};
+    uchar Read_data[5000] = {0};        //主板串口接收缓存区
+    uchar Frock_Read_data[5000] = {0};  //工装的电压采集器串口接收缓存区
     QList<QSerialPortInfo> serialPortInfoList;  //保存有效端口号
+
+    std::vector<int> myVector; //声明一个vector用来保存配置文件中的测试标准
 
 
     /*
@@ -236,21 +249,14 @@ private:
     quint8 mcuactivatedState = 0;   //mcu激活状态
     uchar readmcu = 0,readfrock = 0,controlldsboard =0 ;      //是否读完一个设备，读完1，未读完0
 
-    quint16 down_look[3] = {1850,1850,1500};     //下视（左中右）阈值
-    quint16 down_look_flag[6] = {0,0,0,0,0,0};
-
-    quint8 version_flag = 0;
+    quint8 version_flag = 0;    //版本判断标志位
     QString ap_version ;    //AP版本字符串
     QString mcu_version ;   //MCU版本字符串
-    QString mcu_version_setext = "1.3.84";
-    QString ap_version_setext = "1.3.66";
+    QString mcu_version_setext = "1.3.84";  //MCU的软件版本
+    QString ap_version_setext = "1.3.66";   //AP的软件版本
 
     QString ap_uuid;        //存储ap的uuid
     QString peripvalue = 0;     //外设lineedit显示字符串
-
-    //电机堵转电流范围标准
-    //滚刷范围,边刷，左轮，右轮电机堵转电流
-    quint16 blockoff_elec[4] = {1500,700,500,500};
 
     //配置文件路径
     QString Configfilepath = "D:/qt-progect/FCT_SMT/FCT_SMT_1221/config.txt";
@@ -261,7 +267,6 @@ private:
                                   };
 
     Dataarchiving Myxlsx;       //初始化无参构造函数
-
 
 };
 

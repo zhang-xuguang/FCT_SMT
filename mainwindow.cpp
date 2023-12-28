@@ -54,7 +54,6 @@
 
 
 
-
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -84,13 +83,15 @@ MainWindow::MainWindow(QWidget *parent)
     m_pTimer_1 = new QTimer(this);
     connect(m_pTimer_1, SIGNAL(timeout()), this, SLOT(handleTimeout_1()));
 
-//    m_pTimer_3 = new QTimer(this);
-//    connect(m_pTimer_3, SIGNAL(timeout()), this, SLOT(serialCheckHandleTimeout()));
+
 
     //连接串口
     m_pTimer_2 = new QTimer(this);
     connect(m_pTimer_2, SIGNAL(timeout()), this, SLOT(serialCheckHandleTimeout()));
     m_pTimer_2->start(300);
+
+    m_pTimer_3 = new QTimer(this);
+    connect(m_pTimer_3, SIGNAL(timeout()), this, SLOT(serialCheckHandleTimeout()));
 
     connect(ui->updatefrelineEdit, &QLineEdit::returnPressed, this, &MainWindow::on_updetafreTextChanged);
     ui->updatefrelineEdit->setMaxLength(4);
@@ -103,6 +104,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->serialcontrolboardlable->setFrameShape (QFrame::Box);
     ui->serialfrocklable->setFrameShape (QFrame::Box);
     ui->serialrelaylable->setFrameShape (QFrame::Box);
+
 
 
     //设置版本号
@@ -120,7 +122,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     qApp->installEventFilter(this);
 
-
+    //配置excel表头
     Myxlsx.Myxlsx_config(Configfilepath);
 
 }
@@ -140,12 +142,14 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
             relaycontrol_all[7] = 0x01;
             serialCrc_Send(serial_relay,relaycontrol_all,13);
             start_mainboard = 7;    //设置定时器倒计时时间
+
+            ui->shapcodelineedit->setText(scannedData);
+
+            QR_code = scannedData;
         }
         // 在LineEdit中显示扫描到的数据
-        ui->shapcodelineedit->setText(scannedData);
-        QR_code = scannedData;
-        scannedData.clear();
 
+        scannedData.clear();
     }
 }
 
@@ -203,7 +207,7 @@ void MainWindow::serialCheckHandleTimeout()
                 }
                 else
                 {
-                    ui->serialfrocklable->setStyleSheet("QLabel{background-color:rgb(255,0,0);}");
+                    ui->serialcontrolboardlable->setStyleSheet("QLabel{background-color:rgb(255,0,0);}");
                     qDebug() << "串口1打开失败，请重试";
                 }
             }
@@ -275,13 +279,13 @@ void MainWindow::serialCheckHandleTimeout()
                         ui->serialfrocklable->setStyleSheet("QLabel{background-color:rgb(0,255,0);}");
                         qDebug() << "串口3打开成功";
 
-                        m_pTimer->start(TIMER_TIMEOUT);
+                        m_pTimer->start(TIMER_TIMEOUT);     //打开检测主板的定时器
 
-                        m_pTimer_2->stop();
+                        m_pTimer_2->stop();     //关掉自己
                     }
                     else
                     {
-                        ui->serialcontrolboardlable->setStyleSheet("QLabel{background-color:rgb(255,0,0);}");
+                        ui->serialfrocklable->setStyleSheet("QLabel{background-color:rgb(255,0,0);}");
                         qDebug() << "串口3打开失败，请重试";
                     }
                 }
@@ -327,6 +331,18 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
 
     if(flag == 1)      //已经测玩所有项目
     {
+        //关闭pcb-fct
+        FCT_CHECK[6] = 0x02;
+        serialCrc_Send(serial_mainboard,FCT_CHECK,11);
+        serialCrc_Send(serial_mainboard,FCT_CHECK,11);
+        serialCrc_Send(serial_mainboard,FCT_CHECK,11);
+
+        //打开滚刷
+        FCT_Control[5] = 0x07;
+        FCT_Control[6] = 0x02;
+        serialCrc_Send(serial_mainboard,FCT_CHECK,11);
+
+        on_resetpushbutton_clicked();
         qDebug() << "flag == 1";
         Fctsmt_NUM++;
         for(int i = 0; i <= 30; i++)
@@ -337,15 +353,8 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
         if(flag == 1)
         {
             Fctsmt_pass++;
-            ui->alltestslable->setStyleSheet("QLabel{background-color:rgb(0,255,0);}");
+            ui->alltestslable->setStyleSheet("QLabel{background-color:rgb(0,200,0);}");
             ui->alltestslable->setText("  PASS  ");
-            FCT_CHECK[6] = 0x13;
-            serialCrc_Send(serial_mainboard,FCT_CHECK,11);
-            serialCrc_Send(serial_mainboard,FCT_CHECK,11);
-            serialCrc_Send(serial_mainboard,FCT_CHECK,11);
-
-            FCT_CHECK[6] = 0x12;
-            serialCrc_Send(serial_mainboard,FCT_CHECK,11);
 
             //更新表格  ,Fctsmt_NUM+1  的原因是excel行从第二行开始存数据
             Myxlsx.MyxlsxWrite_parameter(Fctsmt_NUM+1,QR_code,true,Testing_result);
@@ -356,7 +365,7 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
         else
         {
             qDebug() << "ui->alltestslable->setText("");" ;
-            ui->alltestslable->setStyleSheet("QLabel{background-color:rgb(255,0,0);}");
+            ui->alltestslable->setStyleSheet("QLabel{background-color:rgb(200,0,0);}");
             ui->alltestslable->setText("   NG   ");
 
             //更新表格
@@ -370,6 +379,12 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
         //更新配置文件里面的计数
         ChangeFctNum_File();
         ui->fctsumlineEdit->setText(QString::number(Fctsmt_NUM));
+
+
+
+//        relaycontrol_all[7] = 0x00;    //关闭所有继电器
+//        serialCrc_Send(serial_relay,relaycontrol_all,13);
+//        qDebug() << "relaycontrol_all[7] = 0x00;serialCrc_Send(serial_relay,relaycontrol_all,13);";
 
     }
 
@@ -390,7 +405,6 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
 //        relaycontrol_all[7] = 0x01;
 //        serialCrc_Send(serial_relay,relaycontrol_all,13);
 //        mcu_state = 0;
-
 //    }
 
 
@@ -433,6 +447,20 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
             flag_version = 1;
         }
 
+        if(Fctsmt_start == 0 && Pcbfct_start == 1)  //再下一个循环开启fct测试定时器
+        {
+            m_pTimer_1->start(TIMER_TIMEOUT_1);
+            Fctsmt_start = 1;
+        }
+
+        if(Pcbfct_start == 0)   //如果没有开启pcbfct则开启
+        {
+            FCT_CHECK[6] = 0x01;
+            serialCrc_Send(serial_mainboard,FCT_CHECK,11);
+            Pcbfct_start = 1;
+        }
+
+
         ui->fct1pushButton->setEnabled(true);
         ui->fct2pushButton->setEnabled(true);
         ui->periphpushbutton->setEnabled(true);
@@ -454,7 +482,6 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
 //        ui->fct2pushButton->setEnabled(false);
 //        ui->periphpushbutton->setEnabled(false);
     }
-
 
     //判断串口是否连上机器(定时器持续检测)
     if(serial_state_check == 0)
@@ -556,16 +583,17 @@ void MainWindow::handleTimeout_1()      //发送读参数指令
             oneTestresule(true,21);
 
         }
-        else if(periph_state[21] == 2)
+        //else if(periph_state[21] == 2)
+        else
         {
             ui->tableWidget->setItem(21,2,new QTableWidgetItem("0"));
             ui->tableWidget->item(21,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
             oneTestresule(false,21);
         }
-        else
-        {
+//        else
+//        {
 
-        }
+//        }
 
         //将LDS模组和wifi模组的状态写入表格
         if(periph_state[22] == 1)
@@ -576,16 +604,17 @@ void MainWindow::handleTimeout_1()      //发送读参数指令
             oneTestresule(true,22);
 
         }
-        else if(periph_state[22] == 2)
+        //else if(periph_state[22] == 2)
+        else
         {
             ui->tableWidget->setItem(22,2,new QTableWidgetItem("0"));
             ui->tableWidget->item(22,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
             oneTestresule(false,22);
         }
-        else
-        {
+//        else
+//        {
 
-        }
+//        }
 
         //将LDS模组和wifi模组的状态写入表格
         if(periph_state[23] == 1)
@@ -596,16 +625,17 @@ void MainWindow::handleTimeout_1()      //发送读参数指令
             oneTestresule(true,23);
 
         }
-        else if(periph_state[23] == 2)
+        //else if(periph_state[23] == 2)
+        else
         {
             ui->tableWidget->setItem(23,2,new QTableWidgetItem("0"));
             ui->tableWidget->item(23,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
             oneTestresule(false,23);
         }
-        else
-        {
+//        else
+//        {
 
-        }
+//        }
 
         controlldsboard = 1;
 
@@ -617,7 +647,7 @@ void MainWindow::handleTimeout_1()      //发送读参数指令
 
     }
 
-    if(controlldsboard != 0 && controlldsboard < 8)    //继电器控制撞板
+    if(controlldsboard != 0 && controlldsboard < 25)    //继电器控制撞板
     {
         if(controlldsboard == 2)
         {
@@ -626,13 +656,29 @@ void MainWindow::handleTimeout_1()      //发送读参数指令
             serialCrc_Send(serial_relay,relaycontrol_all,13);
 
         }
-        if(controlldsboard == 7)
+        if(controlldsboard == 9)
         {
             qDebug() << "540";
             relaycontrol_all[7] = 0x01;    //闭合继电器4，启动成功
             serialCrc_Send(serial_relay,relaycontrol_all,13);
             m_pTimer_1->stop();
         }
+
+        if(controlldsboard == 15)
+        {
+            qDebug() << "534";
+            relaycontrol_all[7] = 0x09;    //闭合继电器4，启动成功
+            serialCrc_Send(serial_relay,relaycontrol_all,13);
+
+        }
+        if(controlldsboard == 24)
+        {
+            qDebug() << "540";
+            relaycontrol_all[7] = 0x01;    //闭合继电器4，启动成功
+            serialCrc_Send(serial_relay,relaycontrol_all,13);
+            m_pTimer_1->stop();
+        }
+
         controlldsboard++;
     }
 
@@ -981,7 +1027,7 @@ void MainWindow::MaincontrolDataReceived()
                             ui->tableWidget->item(8,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
                             Testing_result[8] = peripvalue;
 
-                            if( ((Read_data[head_num+4] << 8 | Read_data[head_num+5]) < down_look[0])) //判断阈值
+                            if( ((Read_data[head_num+4] << 8 | Read_data[head_num+5]) < myVector[8])) //判断阈值
                             {
                                 oneTestresule(true, 8);
                             }
@@ -998,7 +1044,7 @@ void MainWindow::MaincontrolDataReceived()
                             ui->tableWidget->setItem(9,2,new QTableWidgetItem(peripvalue));
                             ui->tableWidget->item(9,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
                             Testing_result[9] = peripvalue;
-                            if( ((Read_data[head_num+4] << 8 | Read_data[head_num+5]) < down_look[1]) ) //判断阈值
+                            if( ((Read_data[head_num+4] << 8 | Read_data[head_num+5]) < myVector[9]) ) //判断阈值
                             {
                                 oneTestresule(true, 9);
                             }
@@ -1016,7 +1062,7 @@ void MainWindow::MaincontrolDataReceived()
                             ui->tableWidget->setItem(10,2,new QTableWidgetItem(peripvalue));
                             ui->tableWidget->item(10,2)->setTextAlignment(Qt::AlignHCenter|Qt::AlignVCenter);        //设置单元格居中
                             Testing_result[10] = peripvalue;
-                            if( ((Read_data[head_num+4] << 8 | Read_data[head_num+5]) < down_look[2]) ) //判断阈值
+                            if( ((Read_data[head_num+4] << 8 | Read_data[head_num+5]) < myVector[10]) ) //判断阈值
                             {
                                 oneTestresule(true, 10);
                             }
@@ -1605,12 +1651,12 @@ void MainWindow::serialCrc_Send(QSerialPort *serial,quint8 *puchMsg, quint16 usD
     std::cout << std::endl;
 
     serial->write((const char*)puchMsg,usDataLen);
-//    serial->flush();
-//    if (serial->waitForBytesWritten(3000)) {
-//        qDebug() << "数据发送完成";
-//    } else {
-//        qDebug() << "等待数据发送超时：" << serial->errorString();
-//    }
+    serial->flush();
+    if (serial->waitForBytesWritten(3000)) {
+        qDebug() << "数据发送完成";
+    } else {
+        qDebug() << "等待数据发送超时：" << serial->errorString();
+    }
 
 }
 
@@ -1650,24 +1696,38 @@ void MainWindow::on_updetafreTextChanged()
 void MainWindow::on_resetpushbutton_clicked()
 {
 
-    mcu_state = 0;
-    ap_state = 0;
-    serial_head = 0;
-    serial_tail = 0;
+    frame_serial = 0;   //记录一帧数据的帧头位置
+    F1_code = 2;    //读参指令代码
+    serial_state_check = 0;     //检测主板是否连接
+    flag_version = 0;       //检测软件版本，在定时器1中断函数中运行
 
-    count_number = 0;//数组下标
+    Pcbfct_start = 0;    //启动pcbfct标志位
+    Fctsmt_start = 0;    //开始fct测试标志位
+
+    //串口相关
+    count_number = 0;   //主板串口接收数组下标
     head_num = 0;    //一帧中第一个数据下标
     tail_num = 0;    //一帧中末尾数据下标
+    serial_head = 0;     //0，没找到头； 1，找到头。一帧数据处理完之后清零
+    serial_tail = 0;
 
-    flag_version = 0;
-    QString ap_version ;    //AP版本字符串
-    QString mcu_version ;   //MCU版本字符串
-    QString peripvalue = 0;     //外设lineedit显示字符串
 
-    //start_mainboard
+    //所有功能状态复位
+    memset(periph_state,0,40);
+    flag_err = 0;     //如果检测失败则重新检测（最多三次）
+    receive_succsee = 1;  //接收成功标志位
+    start_mainboard = 0;   //启动主板
+
+    mcu_state = 0;   //MCU状态标志位
+    ap_state = 0;    //AP状态标志位
+    apactivatedState = 0;    //AP激活状态
+    mcuactivatedState = 0;   //mcu激活状态
+    readmcu = 0;readfrock = 0;controlldsboard =0 ;      //是否读完一个设备，读完1，未读完0
+
+    version_flag = 0;    //版本判断标志位
 
     memset(Read_data,0,5000);
-    memset(periph_state,0,40);
+    memset(Frock_Read_data,0,5000);
 
     ui->mculable->setFrameShape (QFrame::Box);
     ui->mculable->setStyleSheet("border-width: 1px;border-style: solid;border-color: rgb(0, 0, 0);");
@@ -1675,14 +1735,31 @@ void MainWindow::on_resetpushbutton_clicked()
     ui->aplable->setFrameShape (QFrame::Box);
     ui->aplable->setStyleSheet("border-width: 1px;border-style: solid;border-color: rgb(0, 0, 0);");
 
-
-
-
     ui->mcuversionlineEdit->setText("");
 
-//    relaycontrol_all[7] = 0x00;
-//    relaycontrol_all[8] = 0x00;
-//    serialCrc_Send(serial_relay,relaycontrol_all,13);
+
+    ui->alltestslable->setStyleSheet("border-width: 1px;border-style: solid;border-color: rgb(0, 0, 0);");
+    //ui->alltestslable->setStyleSheet("QLabel{background-color:rgb(0,0,0,0);}");
+    ui->alltestslable->setText("测试结果");
+
+    Table_reset();      //复位ui表格
+
+    //打开风机
+
+    //关闭继电器，断开pcb所有电源
+    relaycontrol_all[7] = 0x00;
+    relaycontrol_all[8] = 0x00;
+    qDebug() << "close";
+    serialCrc_Send(serial_relay,relaycontrol_all,13);
+    qDebug() << "close1";
+
+    m_pTimer_1->stop(); //关闭fct测试定时器
+
+    // 获取目标行的Item
+    QTableWidgetItem *item = ui->tableWidget->item(0, 0); // 这里假设你要跳转到第一列的项
+
+    // 滚动到目标项
+    ui->tableWidget->scrollToItem(item, QAbstractItemView::PositionAtTop);
 
 
 //    ui->fct1pushButton->setEnabled(false);
@@ -1746,7 +1823,7 @@ void MainWindow::Table_init()
     ui->tableWidget->setRowCount(32);//设置行数
     ui->tableWidget->setWindowTitle("tableWidget");
 
-    int targetRow = 2;  // 设置第3行的颜色（行索引从0开始）
+
     QStringList m_Header;
     m_Header<<QString("序号")<<QString("测试项目")<<QString("测试数据")<<QString("测试标准")<<QString("结果");
     ui->tableWidget->setHorizontalHeaderLabels(m_Header);//添加横向表头
@@ -1811,11 +1888,9 @@ void MainWindow::Table_reset()
                 {
                     ui->tableWidget->item(i,a)->setText("");
                 }
-
             }
         }
     }
-
 }
 
 
@@ -1833,6 +1908,7 @@ void MainWindow::ReadConfigFile()
     QTextStream Qstream(&configpath);
 
     int i = 0;
+    bool ok;
     // 读取文件内容并解析
     while (!Qstream.atEnd())
     {
@@ -1871,6 +1947,17 @@ void MainWindow::ReadConfigFile()
                     {
 
                         QString element = values1.at(j);
+                        if(i > 1)
+                        {
+                            if(element.toInt(&ok))  //判断该字符串是否为数字
+                            {
+                                myVector.push_back(element.toInt());    //将测试标准写入vector
+                            }
+                            else
+                            {
+                                myVector.push_back(0);
+                            }
+                        }
 
                         // 处理元素
                         ui->tableWidget->setItem(i-2,(j==1?1:3),new QTableWidgetItem(element));
@@ -1889,7 +1976,10 @@ void MainWindow::ReadConfigFile()
 
 void MainWindow::on_OpenSerialButton_2_clicked()
 {
-    Table_reset();
+    //打开滚刷
+    FCT_Control[5] = 0x07;
+    FCT_Control[6] = 0x02;
+    serialCrc_Send(serial_mainboard,FCT_CHECK,11);
 
 }
 
@@ -1963,7 +2053,7 @@ void MainWindow::ChangeFctPass_File()
     qDebug() << "content" << content;
 
     qDebug()  << "lineStartPositions[1]" << lineStartPositions[0];
-    // 在此处你可以对找到的目标行进行处理
+    // 在此处可以对找到的目标行进行处理,修改fct通过总数
     content.replace(lineStartPositions[1]+15, QString::number(Fctsmt_pass).length()+1, QString::number(Fctsmt_pass)+'\n');
 
     // 移动文件指针到文件开始
@@ -1976,6 +2066,5 @@ void MainWindow::ChangeFctPass_File()
     stream << content;
 
     file.close();
-
 }
 

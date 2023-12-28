@@ -99,7 +99,8 @@
         </font>
        </property>
        <property name="styleSheet">
-        <string notr="true">border-width: 1px;border-style: solid;border-color: rgb(0, 0, 0);</string>
+        <string notr="true">border-width: 1px;border-style: solid;border-color: rgb(0, 0, 0);
+</string>
        </property>
        <property name="text">
         <string>测试结果</string>
