@@ -139,12 +139,11 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         if(scannedData != ui->shapcodelineedit->text()) //检测到扫码枪内容更新
         {
             //闭合继电器2，提供3.3V电压
-            relaycontrol_all[7] = 0x01;
+            relaycontrol_all[7] = 0x02;
             serialCrc_Send(serial_relay,relaycontrol_all,13);
-            start_mainboard = 7;    //设置定时器倒计时时间
+            start_mainboard = 8;    //设置定时器倒计时时间
 
             ui->shapcodelineedit->setText(scannedData);
-
             QR_code = scannedData;
         }
         // 在LineEdit中显示扫描到的数据
@@ -342,7 +341,7 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
         FCT_Control[6] = 0x02;
         serialCrc_Send(serial_mainboard,FCT_CHECK,11);
 
-        on_resetpushbutton_clicked();
+        //on_resetpushbutton_clicked();
         qDebug() << "flag == 1";
         Fctsmt_NUM++;
         for(int i = 0; i <= 30; i++)
@@ -398,40 +397,28 @@ void MainWindow::handleTimeout()        //检测MCU和AP状态，并检测所有
         //更新参数
         flag_version = 1;
     }
-
-//    if(mcu_state == 1 && start_mainboard == 7)
-//    {
-//        //断开3.3V供电,并开启主板15.5V电压
-//        relaycontrol_all[7] = 0x01;
-//        serialCrc_Send(serial_relay,relaycontrol_all,13);
-//        mcu_state = 0;
-//    }
+    qDebug() << "mcu_state" << mcu_state<< "   start_mainboard" << start_mainboard;
 
 
-    if(start_mainboard == 6)
+    if(mcu_state == 1 && start_mainboard == 7)
     {
-        qDebug() << "352";
-        relaycontrol_all[7] |= 0x04;    //闭合继电器3,启动机器
+        //断开3.3V供电,并开启主板15.5V电压,并按下启动按键
+        relaycontrol_all[7] = 0x05;
         serialCrc_Send(serial_relay,relaycontrol_all,13);
+        mcu_state = 0;
+        qDebug() << "407";
     }
 
     if(start_mainboard > 0)
         start_mainboard--;
 
-    if( start_mainboard == 0 && relaycontrol_all[7] != 0x01)
+
+    if(mcu_state == 1 && start_mainboard == 0 && relaycontrol_all[7] != 0x01)
     {
-        qDebug() << "361";
+        qDebug() << "417";
         relaycontrol_all[7] = 0x01;    //断开继电器3，启动成功
         serialCrc_Send(serial_relay,relaycontrol_all,13);
-
     }
-
-//    if(mcu_state == 1 && start_mainboard == 0 && relaycontrol_all[7] != 0x01)
-//    {
-//        qDebug() << "361";
-//        relaycontrol_all[7] = 0x01;    //断开继电器3，启动成功
-//        serialCrc_Send(serial_relay,relaycontrol_all,13);
-//    }
 
     //判断扫地机的MCU和AP是否在线
     if(ap_state == 1 && mcu_state == 1)

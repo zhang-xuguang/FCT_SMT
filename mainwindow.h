@@ -241,7 +241,7 @@ private:
     uchar periph_state[40] = {0};   //1通过，2不通过
     uchar flag_err = 0;     //如果检测失败则重新检测（最多三次）
     uchar receive_succsee = 1;  //接收成功标志位
-    char start_mainboard = 0;   //启动主板
+    uchar start_mainboard = 0;   //启动主板
 
     quint8 mcu_state = 0;   //MCU状态标志位
     quint8 ap_state = 0;    //AP状态标志位
